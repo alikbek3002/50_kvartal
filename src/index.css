@@ -13,6 +13,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
 }
 
 * {
@@ -23,6 +24,12 @@ body {
   margin: 0;
   min-height: 100vh;
   background: var(--bg);
+  overflow-x: hidden;
+}
+
+/* Prevent body scroll when modal/menu is open */
+body.no-scroll {
+  overflow: hidden;
 }
 
 a {
@@ -31,4 +38,45 @@ a {
 
 p {
   margin: 0;
+}
+
+/* Better focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom scrollbar for modern browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Selection color */
+::selection {
+  background: rgba(255, 106, 0, 0.3);
+  color: var(--text-primary);
 }
