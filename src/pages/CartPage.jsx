@@ -18,16 +18,18 @@ export const CartPage = ({ items, onRemove, onEditDate, onClearCart }) => {
     <div className="page-content">
       <div className="container">
         <div className="cart-page">
-          <div className="cart-page__header">
-            <button 
-              className="button ghost" 
-              onClick={() => navigate(-1)}
-              type="button"
-            >
-              ← Назад
-            </button>
-            <h1>Корзина</h1>
-          </div>
+          {items.length > 0 && (
+            <div className="cart-page__header">
+              <button 
+                className="button ghost" 
+                onClick={() => navigate(-1)}
+                type="button"
+              >
+                ← Назад
+              </button>
+              <h1>Корзина</h1>
+            </div>
+          )}
 
           {items.length === 0 ? (
             <div className="cart-page__empty">
