@@ -4351,7 +4351,6 @@ body {
     max-width: 100vw !important;
     width: 100% !important;
     overscroll-behavior-x: none !important;
-    touch-action: pan-y !important;
   }
 
   body {
@@ -4360,7 +4359,6 @@ body {
     max-width: 100vw !important;
     width: 100% !important;
     overscroll-behavior-x: none !important;
-    touch-action: pan-y !important;
     position: relative !important;
   }
 
@@ -4382,19 +4380,35 @@ body {
   .footer,
   .datetime-picker,
   .checkout-modal,
-  .nav--mobile,
   section,
   main,
   header,
   .page-content {
     overflow-x: hidden !important;
     max-width: 100vw !important;
-    width: 100% !important;
   }
 
-  /* Блокируем горизонтальное движение на всех элементах кроме слайдеров */
-  * {
-    overscroll-behavior-x: none;
+  /* Мобильное меню должно иметь корректную ширину */
+  .nav--mobile {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    max-width: 85vw !important;
+  }
+  
+  /* Оверлей мобильного меню */
+  .mobile-menu-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 95 !important;
+  }
+
+  /* Бургер кнопка должна быть кликабельной */
+  .burger {
+    z-index: 110 !important;
+    position: relative !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent;
+    pointer-events: auto !important;
   }
 
   /* Разрешаем горизонтальный скролл только внутри слайдеров */
