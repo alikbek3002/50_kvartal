@@ -1,6 +1,50 @@
+import { useEffect } from 'react'
 import { getProductImage } from '../utils/imageLoader'
 
-export const CartDrawer = ({ isOpen, items, onClose, onRemove, onCheckout }) => {
+export const CartDrawer = ({ isOpen, items, onClose, onRemove, onCheckout, onEditDate }) => {
+  // Блокировка скролла при открытой корзине
+  useEffect(() => {
+    if (isOpen) {
+      // Сохраняем текущую позицию прокрутки
+      const scrollY = window.scrollY
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.width = '100%'
+      document.body.style.overflow = 'hidden'
+      document.documentElement.style.overflow = 'hidden'
+      
+      // Блокируем touchmove на body для мобильных устройств
+      const preventScroll = (e) => {
+        if (!e.target.closest('.cart-panel')) {
+          e.preventDefault()
+        }
+      }
+      document.addEventListener('touchmove', preventScroll, { passive: false })
+      
+      return () => {
+        document.removeEventListener('touchmove', preventScroll)
+      }
+    } else {
+      // Восстанавливаем прокрутку при закрытии
+      const scrollY = document.body.style.top
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1)
+      }
+    }
+    return () => {
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const totalCost = items.reduce((sum, { item, rentalPeriod }) => {
@@ -40,10 +84,15 @@ export const CartDrawer = ({ isOpen, items, onClose, onRemove, onCheckout }) => 
                       {rentalPeriod && (
                         <p className="cart-item__period">
                           {new Date(rentalPeriod.dateFrom).toLocaleDateString('ru-RU')} - {new Date(rentalPeriod.dateTo).toLocaleDateString('ru-RU')}
+                          <br />
+                          <small>{rentalPeriod.timeFrom} - {rentalPeriod.timeTo}</small>
                         </p>
                       )}
                       <p className="cart-item__cost">{days} дн. × {item.pricePerDay || 100} сом = {cost} сом</p>
                       <div className="cart-item__actions">
+                        <button type="button" className="ghost-link" onClick={() => onEditDate(item.name)}>
+                          Изменить даты
+                        </button>
                         <button type="button" className="ghost-link" onClick={() => onRemove(item.name)}>
                           Удалить
                         </button>

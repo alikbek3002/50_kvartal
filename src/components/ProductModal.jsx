@@ -1,7 +1,51 @@
+import { useEffect } from 'react'
 import { getProductImage } from '../utils/imageLoader'
 import { formatBrand } from '../utils/helpers'
 
 export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
+  // Блокировка скролла при открытом модальном окне
+  useEffect(() => {
+    if (item) {
+      // Сохраняем текущую позицию прокрутки
+      const scrollY = window.scrollY
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.width = '100%'
+      document.body.style.overflow = 'hidden'
+      document.documentElement.style.overflow = 'hidden'
+      
+      // Блокируем touchmove на body для мобильных устройств
+      const preventScroll = (e) => {
+        if (!e.target.closest('.modal-card')) {
+          e.preventDefault()
+        }
+      }
+      document.addEventListener('touchmove', preventScroll, { passive: false })
+      
+      return () => {
+        document.removeEventListener('touchmove', preventScroll)
+      }
+    } else {
+      // Восстанавливаем прокрутку при закрытии
+      const scrollY = document.body.style.top
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1)
+      }
+    }
+    return () => {
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+    }
+  }, [item])
+
   if (!item) return null
   return (
     <div className="modal-overlay" onClick={onClose}>

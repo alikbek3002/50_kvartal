@@ -644,6 +644,10 @@ body {
   padding: 20px;
   z-index: 99;
   overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
 .modal-card {
@@ -659,6 +663,8 @@ body {
   position: relative;
   padding: 32px;
   overflow-x: hidden;
+  touch-action: auto;
+  overscroll-behavior: contain;
 }
 
 .modal-media {
@@ -766,6 +772,10 @@ body {
   z-index: 90;
   padding: 20px;
   overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
 .cart-panel {
@@ -780,6 +790,9 @@ body {
   max-height: calc(100vh - 40px);
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: auto;
+  overscroll-behavior: contain;
 }
 
 .cart-panel__header {
@@ -3393,6 +3406,10 @@ body {
   position: relative;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   overflow-x: hidden;
+  overflow-y: auto;
+  max-height: 90vh;
+  touch-action: auto;
+  overscroll-behavior: contain;
 }
 
 .datetime-picker__title {
@@ -3504,6 +3521,8 @@ body {
   position: relative;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   margin: auto;
+  touch-action: auto;
+  overscroll-behavior: contain;
 }
 
 .checkout-modal__title {

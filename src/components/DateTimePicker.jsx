@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode }) => {
+export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existingPeriod }) => {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [timeFrom, setTimeFrom] = useState('09:00')
@@ -8,15 +8,64 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode }) => {
   const [rentalDays, setRentalDays] = useState(0)
   const [totalPrice, setTotalPrice] = useState(0)
 
+  // Заполнение форм существующими данными при редактировании
+  useEffect(() => {
+    if (isOpen && mode === 'edit' && existingPeriod) {
+      // Только в режиме редактирования заполняем существующими данными
+      setDateFrom(existingPeriod.dateFrom)
+      setDateTo(existingPeriod.dateTo)
+      setTimeFrom(existingPeriod.timeFrom)
+      setTimeTo(existingPeriod.timeTo)
+    } else if (isOpen) {
+      // В других режимах сбрасываем форму
+      setDateFrom('')
+      setDateTo('')
+      setTimeFrom('09:00')
+      setTimeTo('21:00')
+    }
+  }, [isOpen, mode, existingPeriod])
+
   // Блокировка скролла при открытом модальном окне
   useEffect(() => {
     if (isOpen) {
+      // Сохраняем текущую позицию прокрутки
+      const scrollY = window.scrollY
+      document.body.style.position = 'fixed'
+      document.body.style.top = `-${scrollY}px`
+      document.body.style.width = '100%'
       document.body.style.overflow = 'hidden'
+      document.documentElement.style.overflow = 'hidden'
+      
+      // Блокируем touchmove на body для мобильных устройств
+      const preventScroll = (e) => {
+        // Разрешаем скролл только внутри модального окна
+        if (!e.target.closest('.datetime-picker')) {
+          e.preventDefault()
+        }
+      }
+      document.addEventListener('touchmove', preventScroll, { passive: false })
+      
+      return () => {
+        document.removeEventListener('touchmove', preventScroll)
+      }
     } else {
+      // Восстанавливаем прокрутку при закрытии
+      const scrollY = document.body.style.top
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
       document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1)
+      }
     }
     return () => {
+      document.body.style.position = ''
+      document.body.style.top = ''
+      document.body.style.width = ''
       document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
     }
   }, [isOpen])
 
@@ -44,11 +93,6 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode }) => {
         timeFrom,
         timeTo,
       })
-      // Сброс формы
-      setDateFrom('')
-      setDateTo('')
-      setTimeFrom('09:00')
-      setTimeTo('21:00')
     }
   }
 
@@ -93,7 +137,7 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode }) => {
           ×
         </button>
         <h3 className="datetime-picker__title">
-          {mode === 'quick' ? 'Быстрая аренда' : 'Добавить в корзину'}
+          {mode === 'quick' ? 'Быстрая аренда' : mode === 'edit' ? 'Изменить даты аренды' : 'Добавить в корзину'}
         </h3>
         <p className="datetime-picker__subtitle">{item.name}</p>
         

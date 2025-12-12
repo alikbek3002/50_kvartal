@@ -19,6 +19,7 @@ function App() {
   const [cartItems, setCartItems] = useState([])
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [dateTimePickerState, setDateTimePickerState] = useState({ isOpen: false, item: null, mode: null })
+  const [editingCartItem, setEditingCartItem] = useState(null)
   const [toastState, setToastState] = useState({ isVisible: false, message: '' })
 
   const categoryTotals = useMemo(() => {
@@ -65,7 +66,17 @@ function App() {
   const handleDateTimeSubmit = (rentalPeriod) => {
     const { item, mode } = dateTimePickerState
     
-    if (mode === 'cart') {
+    if (mode === 'edit') {
+      // Редактирование даты товара в корзине
+      setCartItems((prev) =>
+        prev.map((entry) =>
+          entry.item.name === editingCartItem ? { ...entry, rentalPeriod } : entry
+        )
+      )
+      showToast('Даты аренды обновлены')
+      setEditingCartItem(null)
+      closeDateTimePicker()
+    } else if (mode === 'cart') {
       addToCart(item, rentalPeriod)
       showToast('Товар добавлен в корзину')
       closeDateTimePicker()
@@ -75,6 +86,14 @@ function App() {
       closeDateTimePicker()
       closeModal()
       navigate('/checkout')
+    }
+  }
+
+  const handleEditCartItemDate = (itemName) => {
+    const cartItem = cartItems.find((entry) => entry.item.name === itemName)
+    if (cartItem) {
+      setEditingCartItem(itemName)
+      setDateTimePickerState({ isOpen: true, item: cartItem.item, mode: 'edit', existingPeriod: cartItem.rentalPeriod })
     }
   }
 
@@ -114,18 +133,6 @@ function App() {
     }
     window.addEventListener('keydown', handleEsc)
     return () => window.removeEventListener('keydown', handleEsc)
-  }, [selectedItem, isCartOpen])
-
-  // Блокировка скролла при открытых модальных окнах
-  useEffect(() => {
-    if (selectedItem || isCartOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
   }, [selectedItem, isCartOpen])
 
   return (
@@ -183,6 +190,7 @@ function App() {
         onIncrement={incrementCart}
         onDecrement={decrementCart}
         onRemove={removeFromCart}
+        onEditDate={handleEditCartItemDate}
         onCheckout={() => {
           closeCart()
           navigate('/checkout')
@@ -192,6 +200,7 @@ function App() {
         isOpen={dateTimePickerState.isOpen}
         item={dateTimePickerState.item}
         mode={dateTimePickerState.mode}
+        existingPeriod={dateTimePickerState.existingPeriod}
         onClose={closeDateTimePicker}
         onSubmit={handleDateTimeSubmit}
       />
