@@ -1,3 +1,25 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  overflow-x: hidden !important;
+  width: 100%;
+  max-width: 100vw;
+  position: relative;
+}
+
+body {
+  overflow-x: hidden !important;
+  width: 100%;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
 .page {
   min-height: 100vh;
   color: var(--text-primary);
@@ -6,20 +28,32 @@
     radial-gradient(circle at 75% 0%, rgba(255, 255, 255, 0.06), transparent 30%),
     linear-gradient(120deg, rgba(255, 255, 255, 0.02), transparent 55%),
     var(--bg);
+  overflow-x: hidden !important;
+  width: 100%;
+  max-width: 100vw;
+  position: relative;
 }
 
 .container {
-  width: min(100%, 1600px);
+  width: 100%;
+  max-width: min(100%, 1600px);
   margin: 0 auto;
   padding: 0 40px;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .topbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.topbar__container {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 28px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .nav {
@@ -150,6 +184,8 @@
 
 .hero {
   padding: clamp(50px, 8vw, 100px) 0 clamp(40px, 6vw, 80px);
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 .hero__layout {
@@ -159,6 +195,8 @@
   padding: 0 clamp(20px, 4vw, 60px);
   max-width: 1200px;
   margin: 0 auto;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 .hero__layout::before {
@@ -215,6 +253,8 @@
   padding: 20px 0 0;
   margin: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .hero__stats li {
@@ -273,6 +313,8 @@
 
 .catalog {
   padding: clamp(30px, 6vw, 80px) 0 clamp(40px, 8vw, 120px);
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 .catalog--page {
@@ -286,6 +328,7 @@
 .catalog--home .container {
   max-width: 100%;
   padding: 0 40px;
+  box-sizing: border-box;
 }
 
 .catalog__grid {
@@ -329,6 +372,8 @@
   margin-top: 30px;
   position: relative;
   overflow: hidden;
+  max-width: 100%;
+  width: 100%;
 }
 
 .slider--marquee {
@@ -337,13 +382,12 @@
 
 .slider--mobile {
   padding: 15px 0;
-  margin-left: -20px;
-  margin-right: -20px;
   overflow: visible;
 }
 
 .slider__viewport {
-  overflow: hidden;
+  max-width: 100%;
+  width: 100%;
 }
 
 .slider--marquee .slider__viewport {
@@ -378,14 +422,12 @@
 }
 
 .slider--mobile .slider__viewport {
-  overflow-x: auto;
+  overflow-x: auto !important;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  padding: 0 20px;
   scroll-snap-type: x mandatory;
-  scroll-padding: 0 20px;
 }
 
 .slider--mobile .slider__viewport::-webkit-scrollbar {
@@ -432,19 +474,19 @@
 }
 
 .slider__card-mobile {
-  flex: 0 0 260px;
+  flex: 0 0 220px;
   scroll-snap-align: start;
 }
 
 .slider__card-mobile .product {
-  padding: 10px;
+  padding: 8px;
   gap: 6px;
   min-height: auto;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 .slider__card-mobile .product h3 {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   line-height: 1.2;
 }
 
@@ -454,8 +496,8 @@
 }
 
 .slider__card-mobile .badge {
-  font-size: 0.65rem;
-  padding: 3px 8px;
+  font-size: 0.6rem;
+  padding: 2px 6px;
 }
 
 .slider__card-mobile .product__description {
@@ -463,8 +505,8 @@
 }
 
 .slider__card-mobile .button {
-  padding: 10px 16px;
-  font-size: 0.8rem;
+  padding: 8px 12px;
+  font-size: 0.75rem;
 }
 
 .product {
@@ -563,6 +605,34 @@
   justify-content: center;
 }
 
+/* Товар в корзине */
+.product--in-cart .product__thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 1;
+}
+
+.product__in-cart-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--accent);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  z-index: 2;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(255, 106, 0, 0.4);
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -573,10 +643,12 @@
   justify-content: center;
   padding: 20px;
   z-index: 99;
+  overflow-x: hidden;
 }
 
 .modal-card {
   width: min(960px, 100%);
+  max-width: 100%;
   background: #050505;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 24px;
@@ -586,6 +658,7 @@
   gap: 32px;
   position: relative;
   padding: 32px;
+  overflow-x: hidden;
 }
 
 .modal-media {
@@ -692,10 +765,12 @@
   align-items: stretch;
   z-index: 90;
   padding: 20px;
+  overflow-x: hidden;
 }
 
 .cart-panel {
   width: min(420px, 100%);
+  max-width: 100%;
   background: #050505;
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   padding: 28px;
@@ -704,6 +779,7 @@
   gap: 20px;
   max-height: calc(100vh - 40px);
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .cart-panel__header {
@@ -851,6 +927,12 @@
   color: var(--text-muted);
 }
 
+.form-error {
+  font-size: 0.75rem;
+  color: #ff4444;
+  margin-top: 4px;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -911,32 +993,101 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 16px;
-  padding: 40px 20px;
+  gap: 24px;
+  padding: 60px 40px;
   flex: 1;
+  max-width: 700px;
+  margin: 0 auto;
 }
 
 .checkout-success__icon {
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
   color: #6cf2b2;
+  animation: checkmarkPop 0.5s ease;
 }
 
-.checkout-success h4 {
+@keyframes checkmarkPop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.checkout-success h2 {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 2rem;
+  color: var(--text-primary);
 }
 
-.checkout-success p {
+.checkout-success__message {
   margin: 0;
   color: var(--text-secondary);
-  max-width: 280px;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.checkout-success__contact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  width: 100%;
+}
+
+.checkout-success__contact p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.checkout-success__phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  background: var(--accent);
+  color: white;
+  text-decoration: none;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  align-self: center;
+}
+
+.checkout-success__phone:hover {
+  background: rgba(255, 106, 0, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(255, 106, 0, 0.3);
+}
+
+.checkout-success__phone svg {
+  width: 24px;
+  height: 24px;
+}
+
+.checkout-success__button {
+  margin-top: 16px;
+  padding: 14px 32px;
 }
 
 .footer {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding: 60px 0 32px;
   margin-top: 60px;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 .footer__grid {
@@ -1132,6 +1283,7 @@
   top: 0;
   right: -100%;
   width: min(320px, 85vw);
+  max-width: 85vw;
   height: 100vh;
   background: #0a0a0a;
   border-left: 1px solid rgba(255, 255, 255, 0.1);
@@ -1141,6 +1293,7 @@
   z-index: 100;
   transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .nav--mobile-open {
@@ -1251,9 +1404,35 @@
 /* Tablets (768px - 992px) */
 /* iPad Pro и большие планшеты (1024px) */
 @media (max-width: 1024px) and (min-width: 769px) {
+  /* Header - десктопный вид для планшетов */
+  .burger {
+    display: none;
+  }
+
+  .nav--desktop {
+    display: flex;
+  }
+
+  .nav--mobile {
+    display: none;
+  }
+
+  .header__actions--desktop {
+    display: flex;
+  }
+
+  .cart-button--mobile {
+    display: none;
+  }
+
   .hero {
-    padding: 70px 0;
-    min-height: 70vh;
+    padding: 50px 0;
+    min-height: 50vh;
+  }
+
+  .hero__layout {
+    padding: 0 clamp(24px, 4vw, 50px);
+    max-width: 100%;
   }
 
   .hero h1 {
@@ -1267,6 +1446,15 @@
 
   .hero__stats-label {
     font-size: 0.9rem;
+  }
+
+  /* Слайдер на iPad должен использовать десктопный вид */
+  .slider--marquee .slider__viewport {
+    overflow-x: auto;
+  }
+
+  .slider__card-marquee {
+    flex: 0 0 360px;
   }
 
   .catalog__grid {
@@ -1385,17 +1573,21 @@
   }
 }
 
-/* Large Phones / Small Tablets (576px - 768px) */
-@media (max-width: 768px) {
+/* Large Phones / Small Tablets (до 767px - только телефоны) */
+@media (max-width: 767px) {
   .container {
     padding: 0 20px;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .catalog--home .container {
     padding: 0 20px;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
-  /* Header Mobile */
+  /* Header Mobile - только на телефонах */
   .topbar {
     display: flex;
     flex-wrap: nowrap;
@@ -1662,10 +1854,14 @@
 @media (max-width: 576px) {
   .container {
     padding: 0 16px;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .catalog--home .container {
     padding: 0 16px;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .topbar {
@@ -1983,20 +2179,43 @@
   }
 
   .checkout-success {
-    padding: 30px 16px;
+    padding: 40px 20px;
+    gap: 20px;
   }
 
   .checkout-success__icon {
-    width: 52px;
-    height: 52px;
+    width: 60px;
+    height: 60px;
   }
 
-  .checkout-success h4 {
-    font-size: 1.2rem;
+  .checkout-success h2 {
+    font-size: 1.6rem;
   }
 
-  .checkout-success p {
-    font-size: 0.9rem;
+  .checkout-success__message {
+    font-size: 1rem;
+  }
+
+  .checkout-success__contact {
+    padding: 20px;
+    gap: 10px;
+  }
+
+  .checkout-success__phone {
+    font-size: 1rem;
+    padding: 12px 20px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .checkout-success__phone svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .checkout-success__button {
+    width: 100%;
+    padding: 12px 24px;
   }
 }
 
@@ -2005,10 +2224,14 @@
 @media (max-width: 320px) {
   .container {
     padding: 0 10px;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .catalog--home .container {
     padding: 0 10px;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .topbar {
@@ -2051,8 +2274,8 @@
   }
 
   .catalog__grid {
-    grid-template-columns: 1fr;
-    gap: 14px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
 
   .product {
@@ -2082,14 +2305,59 @@
   }
 }
 
+/* iPhone SE и подобные (до 375px) */
+@media (max-width: 375px) {
+  .container {
+    padding: 0 10px !important;
+  }
+
+  .catalog--home .container {
+    padding: 0 10px !important;
+  }
+
+  .topbar {
+    padding: 14px 10px !important;
+  }
+
+  .hero__layout {
+    padding: 0 12px !important;
+  }
+
+  .catalog__grid {
+    gap: 8px !important;
+  }
+
+  .product {
+    padding: 8px !important;
+  }
+
+  .product h3 {
+    font-size: 0.8rem !important;
+  }
+
+  .product__actions .button {
+    font-size: 0.7rem !important;
+    padding: 6px 10px !important;
+  }
+
+  .badge {
+    font-size: 0.6rem !important;
+    padding: 2px 6px !important;
+  }
+}
+
 /* Маленькие телефоны (до 380px) */
 @media (max-width: 380px) and (min-width: 321px) {
   .container {
     padding: 0 12px;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .catalog--home .container {
     padding: 0 12px;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .topbar {
@@ -2243,72 +2511,461 @@
   }
 }
 
-/* iPad в портретной ориентации */
-@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
-  .hero {
-    min-height: 75vh;
-    padding: 60px 0;
+/* iPad mini портрет (768px - 834px) */
+@media (min-width: 768px) and (max-width: 834px) and (orientation: portrait) {
+  /* Контейнеры */
+  .container {
+    padding: 0 28px;
+    max-width: 100%;
   }
 
-  .hero h1 {
-    font-size: clamp(2.8rem, 5vw, 3.5rem);
-    line-height: 1.2;
+  .catalog--home .container {
+    padding: 0 28px;
   }
 
-  .hero__stats {
-    gap: 28px 48px;
-  }
-
-  .hero__stats-value {
-    font-size: 2.8rem;
-  }
-
-  .hero__stats-label {
-    font-size: 1rem;
+  /* Header - десктопный вид */
+  .topbar__container {
+    padding: 20px 0;
   }
 
   .brand__logo {
-    height: 100px;
+    height: 70px;
+  }
+
+  .nav--desktop {
+    display: flex;
+    gap: 14px;
+  }
+
+  .nav__link {
+    font-size: 0.8rem;
+  }
+
+  .header__contact {
+    font-size: 0.85rem;
+  }
+
+  .header__actions--desktop {
+    display: flex;
+    gap: 12px;
+  }
+
+  .burger {
+    display: none;
+  }
+
+  .nav--mobile {
+    display: none;
+  }
+
+  .cart-button--mobile {
+    display: none;
+  }
+
+  /* Hero */
+  .hero {
+    min-height: 45vh;
+    padding: 40px 0;
+  }
+
+  .hero__layout {
+    padding: 0 clamp(24px, 3.5vw, 36px);
+    max-width: 100%;
+    gap: 18px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.2rem, 4vw, 2.8rem);
+    line-height: 1.15;
+  }
+
+  .lead {
+    font-size: 0.95rem;
+    max-width: 90%;
+  }
+
+  .hero__stats {
+    gap: 20px 36px;
+    padding-top: 14px;
+  }
+
+  .hero__stats-value {
+    font-size: 2.2rem;
+  }
+
+  .hero__stats-label {
+    font-size: 0.9rem;
+  }
+
+  /* Слайдер на iPad mini портрет - десктопный вид */
+  .slider {
+    margin-top: 26px;
+  }
+
+  .slider--marquee {
+    padding: 18px 0;
+  }
+
+  .slider--marquee .slider__viewport {
+    overflow-x: auto;
+    cursor: grab;
+    padding: 0 4px;
+  }
+
+  .slider__card-marquee {
+    flex: 0 0 300px;
+  }
+
+  .slider__track-marquee {
+    gap: 20px;
+  }
+
+  .slider__card-marquee .product {
+    padding: 16px;
+  }
+
+  /* Каталог */
+  .section__heading {
+    margin-bottom: 28px;
+  }
+
+  .section__heading h2 {
+    font-size: 1.8rem;
   }
 
   .catalog__grid {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 28px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
   }
 
   .product {
-    padding: 20px;
+    padding: 14px;
   }
 
   .product h3 {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
   }
 
+  .product__price {
+    font-size: 0.9rem;
+  }
+
+  .product__actions {
+    gap: 8px;
+  }
+
+  .product__actions .button {
+    font-size: 0.8rem;
+    padding: 9px 12px;
+  }
+
+  /* Модальные окна */
   .modal-card {
     grid-template-columns: 1fr;
-    max-width: 85%;
+    max-width: 90%;
+    padding: 24px;
+    gap: 20px;
   }
 
+  .modal-card h3 {
+    font-size: 1.6rem;
+  }
+
+  /* Формы */
   .checkout-modal {
-    max-width: 85%;
-    padding: 32px;
+    max-width: 90%;
+    padding: 24px;
+  }
+
+  .checkout-modal__title {
+    font-size: 1.6rem;
   }
 
   .datetime-picker {
-    max-width: 85%;
+    max-width: 90%;
+    padding: 24px;
+  }
+
+  .datetime-picker__title {
+    font-size: 1.6rem;
+  }
+
+  /* Страница оформления заказа */
+  .checkout-page {
+    padding: 45px 0;
+  }
+
+  .checkout-page__title {
+    font-size: 1.8rem;
+  }
+
+  .checkout-page__grid {
+    gap: 28px;
+  }
+
+  /* Чипсы каталога */
+  .catalog__chips {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    font-size: 0.75rem;
+    padding: 9px 14px;
+  }
+}
+
+/* iPad стандарт и Air портрет (835px - 1024px) */
+@media (min-width: 835px) and (max-width: 1024px) and (orientation: portrait) {
+  /* Контейнеры */
+  .container {
+    padding: 0 32px;
+    max-width: 100%;
+  }
+
+  .catalog--home .container {
+    padding: 0 32px;
+  }
+
+  /* Header - десктопный вид */
+  .topbar__container {
+    padding: 24px 0;
+  }
+
+  .brand__logo {
+    height: 85px;
+  }
+
+  .nav--desktop {
+    display: flex;
+    gap: 16px;
+  }
+
+  .nav__link {
+    font-size: 0.85rem;
+  }
+
+  .header__contact {
+    font-size: 0.9rem;
+  }
+
+  .header__actions--desktop {
+    display: flex;
+  }
+
+  .burger {
+    display: none;
+  }
+
+  .nav--mobile {
+    display: none;
+  }
+
+  .cart-button--mobile {
+    display: none;
+  }
+
+  /* Hero */
+  .hero {
+    min-height: 50vh;
+    padding: 45px 0;
+  }
+
+  .hero__layout {
+    padding: 0 clamp(28px, 4vw, 40px);
+    max-width: 100%;
+    gap: 20px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.5rem, 4.5vw, 3.2rem);
+    line-height: 1.15;
+  }
+
+  .lead {
+    font-size: 1rem;
+    max-width: 90%;
+  }
+
+  .hero__stats {
+    gap: 24px 40px;
+    padding-top: 16px;
+  }
+
+  .hero__stats-value {
+    font-size: 2.5rem;
+  }
+
+  .hero__stats-label {
+    font-size: 0.95rem;
+  }
+
+  /* Слайдер на iPad портрет */
+  .slider {
+    margin-top: 28px;
+  }
+
+  .slider--marquee {
+    padding: 20px 0;
+  }
+
+  .slider--marquee .slider__viewport {
+    overflow-x: auto;
+    cursor: grab;
+    padding: 0 4px;
+  }
+
+  .slider__card-marquee {
+    flex: 0 0 340px;
+  }
+
+  .slider__track-marquee {
+    gap: 24px;
+  }
+
+  .slider__card-marquee .product {
+    padding: 18px;
+  }
+
+  /* Каталог */
+  .section__heading {
+    margin-bottom: 32px;
+  }
+
+  .section__heading h2 {
+    font-size: 2rem;
+  }
+
+  .catalog__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+
+  .product {
+    padding: 16px;
+  }
+
+  .product h3 {
+    font-size: 1rem;
+  }
+
+  .product__price {
+    font-size: 0.95rem;
+  }
+
+  .product__actions {
+    gap: 8px;
+  }
+
+  .product__actions .button {
+    font-size: 0.85rem;
+    padding: 10px 14px;
+  }
+
+  /* Модальные окна */
+  .modal-card {
+    grid-template-columns: 1fr;
+    max-width: 90%;
     padding: 28px;
+    gap: 24px;
+  }
+
+  .modal-card h3 {
+    font-size: 1.8rem;
+  }
+
+  /* Формы */
+  .checkout-modal {
+    max-width: 90%;
+    padding: 28px;
+  }
+
+  .checkout-modal__title {
+    font-size: 1.8rem;
+  }
+
+  .datetime-picker {
+    max-width: 90%;
+    padding: 28px;
+  }
+
+  .datetime-picker__title {
+    font-size: 1.8rem;
+  }
+
+  /* Страница оформления заказа */
+  .checkout-page {
+    padding: 50px 0;
+  }
+
+  .checkout-page__title {
+    font-size: 2rem;
+  }
+
+  .checkout-page__grid {
+    gap: 32px;
+  }
+
+  /* Чипсы каталога */
+  .catalog__chips {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    font-size: 0.8rem;
+    padding: 10px 16px;
   }
 }
 
 /* iPad в альбомной ориентации */
 @media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+  /* Header - десктопный вид */
+  .burger {
+    display: none;
+  }
+
+  .nav--desktop {
+    display: flex;
+  }
+
+  .nav--mobile {
+    display: none;
+  }
+
+  .header__actions--desktop {
+    display: flex;
+  }
+
+  .cart-button--mobile {
+    display: none;
+  }
+
   .hero {
-    min-height: 85vh;
-    padding: 50px 0;
+    min-height: 55vh;
+    padding: 40px 0;
+  }
+
+  .hero__layout {
+    padding: 0 clamp(24px, 4vw, 48px);
+    max-width: 100%;
   }
 
   .hero h1 {
     font-size: clamp(2.5rem, 4vw, 3rem);
+  }
+
+  /* Слайдер на iPad альбом - десктопный вид */
+  .slider--marquee .slider__viewport {
+    overflow-x: auto;
+  }
+
+  .slider__card-marquee {
+    flex: 0 0 340px;
+  }
+
+  .slider__track-marquee {
+    gap: 24px;
   }
 
   .catalog__grid {
@@ -2735,6 +3392,7 @@
   width: 90%;
   position: relative;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  overflow-x: hidden;
 }
 
 .datetime-picker__title {
@@ -2838,12 +3496,14 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
   padding: 40px;
-  max-width: 700px;
+  max-width: 550px;
   width: 90%;
-  max-height: 90vh;
+  max-height: 85vh;
   overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  margin: auto;
 }
 
 .checkout-modal__title {
@@ -2988,6 +3648,86 @@
   color: var(--accent);
   font-size: 0.9rem;
   text-align: center;
+}
+
+/* ============================================
+   СТРАНИЦА ОФОРМЛЕНИЯ ЗАКАЗА
+   ============================================ */
+
+.checkout-page {
+  min-height: calc(100vh - 120px);
+  padding: 60px 0;
+}
+
+.checkout-page__content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.checkout-page__title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 40px;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.checkout-page__grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+.checkout-page__items h3,
+.checkout-page__form-wrapper h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 24px;
+  color: var(--text-primary);
+}
+
+.checkout-page__form-wrapper {
+  position: sticky;
+  top: 100px;
+  background: rgba(18, 18, 18, 0.98);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  padding: 32px;
+}
+
+.checkout-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.checkout-page__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.checkout-page__actions .button {
+  flex: 1;
+}
+
+.checkout-page__empty {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.checkout-page__empty h2 {
+  font-size: 2rem;
+  margin: 0 0 16px;
+  color: var(--text-primary);
+}
+
+.checkout-page__empty p {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin: 0 0 32px;
 }
 
 /* ============================================
@@ -3169,7 +3909,7 @@
    Mobile Responsiveness for New Components
    ============================================ */
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .datetime-picker {
     padding: 24px;
     max-width: 95%;
@@ -3184,8 +3924,10 @@
   }
 
   .checkout-modal {
-    padding: 24px;
-    max-width: 95%;
+    padding: 20px;
+    padding-top: 50px;
+    max-width: 92%;
+    max-height: 92vh;
   }
 
   .checkout-modal__title {
@@ -3205,6 +3947,31 @@
 
   .checkout-modal__actions {
     flex-direction: column;
+  }
+
+  /* Адаптив для страницы оформления заказа */
+  .checkout-page {
+    padding: 40px 0;
+  }
+
+  .checkout-page__title {
+    font-size: 1.8rem;
+    margin-bottom: 32px;
+  }
+
+  .checkout-page__grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .checkout-page__form-wrapper {
+    position: static;
+    padding: 24px;
+  }
+
+  .checkout-page__items h3,
+  .checkout-page__form-wrapper h3 {
+    font-size: 1.3rem;
   }
 
   .catalog__search {
@@ -3240,7 +4007,48 @@
   }
 
   .checkout-modal {
+    padding: 16px;
+    padding-top: 50px;
+    max-width: 95%;
+    border-radius: 16px;
+  }
+
+  .checkout-modal .modal-close {
+    top: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+    font-size: 1.8rem;
+    z-index: 10;
+  }
+
+  /* Адаптив для страницы оформления на маленьких телефонах */
+  .checkout-page {
+    padding: 24px 0;
+  }
+
+  .checkout-page__title {
+    font-size: 1.5rem;
+    margin-bottom: 24px;
+  }
+
+  .checkout-page__form-wrapper {
     padding: 20px;
+  }
+
+  .checkout-page__items h3,
+  .checkout-page__form-wrapper h3 {
+    font-size: 1.2rem;
+  }
+
+  .checkout-page__actions {
+    flex-direction: column;
+  }
+
+  /* Принудительно 2 колонки в каталоге */
+  .catalog__grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px;
   }
 
   .product__actions {
@@ -3249,5 +4057,81 @@
 
   .product__actions .button {
     width: 100%;
+  }
+
+  /* Ещё меньше карточки для маленьких экранов */
+  .slider__card-mobile {
+    flex: 0 0 190px;
+  }
+
+  /* Меньше надпись "В корзине" для маленьких экранов */
+  .product__in-cart-badge {
+    padding: 6px 10px;
+    font-size: 0.65rem;
+    border-radius: 6px;
+  }
+
+  .slider__card-mobile .product {
+    padding: 6px;
+  }
+
+  .slider__card-mobile .product h3 {
+    font-size: 0.8rem;
+  }
+
+  .slider__card-mobile .product__price {
+    font-size: 0.85rem;
+  }
+
+  .slider__card-mobile .button {
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 380px) {
+  /* Еще меньше надпись "В корзине" для очень маленьких экранов */
+  .product__in-cart-badge {
+    padding: 4px 8px;
+    font-size: 0.55rem;
+    border-radius: 4px;
+  }
+}
+
+/* КРИТИЧЕСКОЕ: Полная блокировка горизонтального скролла на мобильных */
+@media (max-width: 767px) {
+  html,
+  body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+  }
+
+  .page,
+  .container,
+  .hero,
+  .hero__layout,
+  .catalog,
+  .topbar,
+  .modal-overlay,
+  .modal-card,
+  .cart-overlay,
+  .cart-panel,
+  .footer,
+  .datetime-picker,
+  .checkout-modal,
+  .nav--mobile,
+  section,
+  main,
+  header {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+  }
+
+  .product__thumb img,
+  .modal-media img,
+  .slider img {
+    max-width: 100% !important;
+    height: auto !important;
   }
 }

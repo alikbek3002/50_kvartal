@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { getProductImage } from '../utils/imageLoader'
 import { sendOrderToTelegram } from '../utils/telegram'
 
@@ -11,6 +11,18 @@ export const CheckoutModal = ({ isOpen, items, onClose, onRemove, onClearCart })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [submitError, setSubmitError] = useState(false)
+
+  // Блокировка скролла при открытом модальном окне
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 

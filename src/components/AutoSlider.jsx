@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import { getProductImage } from '../utils/imageLoader'
 import { formatBrand } from '../utils/helpers'
 
-export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent }) => {
+export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cartItems = [] }) => {
   const trackRef = useRef(null)
   const viewportRef = useRef(null)
   const [isPaused, setIsPaused] = useState(false)
@@ -23,13 +23,12 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent }) =>
     if (!viewport || isMobile) return
 
     const handleWheel = (e) => {
+      // Реагируем только на явную горизонтальную прокрутку
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
         e.preventDefault()
         viewport.scrollLeft += e.deltaX
-      } else {
-        e.preventDefault()
-        viewport.scrollLeft += e.deltaY
       }
+      // Вертикальную прокрутку не перехватываем - даем странице прокручиваться
     }
 
     viewport.addEventListener('wheel', handleWheel, { passive: false })
@@ -56,10 +55,12 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent }) =>
           ref={trackRef}
           className={`${isMobile ? 'slider__track-mobile' : 'slider__track-marquee'} ${isPaused && !isMobile ? 'slider__track-marquee--paused' : ''}`}
         >
-          {duplicatedItems.map((item, idx) => (
+          {duplicatedItems.map((item, idx) => {
+            const isInCart = cartItems.some(cartItem => cartItem.item.name === item.name)
+            return (
             <article
               key={`${item.name}-${idx}`}
-              className={`product ${isMobile ? 'slider__card-mobile' : 'slider__card-marquee'}`}
+              className={`product ${isMobile ? 'slider__card-mobile' : 'slider__card-marquee'} ${isInCart ? 'product--in-cart' : ''}`}
               onClick={() => onSelectItem(item)}
               role="button"
               tabIndex={0}
@@ -67,6 +68,7 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent }) =>
             >
               <div className="product__thumb">
                 <img src={getProductImage(item)} alt={item.name} loading="lazy" />
+                {isInCart && <div className="product__in-cart-badge">В корзине</div>}
               </div>
               <div className="product__meta">
                 <span className="badge">{formatBrand(item.brand)}</span>
@@ -97,7 +99,8 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent }) =>
                 </button>
               </div>
             </article>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>

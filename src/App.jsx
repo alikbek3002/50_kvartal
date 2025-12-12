@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, useNavigate } from 'react-router-dom'
 import './App.css'
 import inventory from './data/inventory.json'
 import { plural } from './utils/helpers'
@@ -9,17 +9,17 @@ import { ProductModal } from './components/ProductModal'
 import { CartDrawer } from './components/CartDrawer'
 import { DateTimePicker } from './components/DateTimePicker'
 import { Toast } from './components/Toast'
-import { CheckoutModal } from './components/CheckoutModal'
 import { HomePage } from './pages/HomePage'
 import { CatalogPage } from './pages/CatalogPage'
+import { CheckoutPage } from './pages/CheckoutPage'
 
 function App() {
+  const navigate = useNavigate()
   const [selectedItem, setSelectedItem] = useState(null)
   const [cartItems, setCartItems] = useState([])
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [dateTimePickerState, setDateTimePickerState] = useState({ isOpen: false, item: null, mode: null })
   const [toastState, setToastState] = useState({ isVisible: false, message: '' })
-  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
 
   const categoryTotals = useMemo(() => {
     return inventory.reduce((acc, item) => {
@@ -74,7 +74,7 @@ function App() {
       addToCart(item, rentalPeriod)
       closeDateTimePicker()
       closeModal()
-      setIsCheckoutModalOpen(true)
+      navigate('/checkout')
     }
   }
 
@@ -118,7 +118,7 @@ function App() {
 
   // Блокировка скролла при открытых модальных окнах
   useEffect(() => {
-    if (selectedItem || isCartOpen || dateTimePickerState.isOpen || isCheckoutModalOpen) {
+    if (selectedItem || isCartOpen) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
@@ -126,7 +126,7 @@ function App() {
     return () => {
       document.body.style.overflow = ''
     }
-  }, [selectedItem, isCartOpen, dateTimePickerState.isOpen, isCheckoutModalOpen])
+  }, [selectedItem, isCartOpen])
 
   return (
     <div className="page">
@@ -141,6 +141,7 @@ function App() {
               onSelectItem={setSelectedItem}
               onAddToCart={(item) => openDateTimePicker(item, 'cart')}
               onQuickRent={(item) => openDateTimePicker(item, 'quick')}
+              cartItems={cartItems}
             />
           }
         />
@@ -153,6 +154,17 @@ function App() {
               onAddToCart={(item) => openDateTimePicker(item, 'cart')}
               onQuickRent={(item) => openDateTimePicker(item, 'quick')}
               categoryChips={categoryChips}
+              cartItems={cartItems}
+            />
+          }
+        />
+        <Route
+          path="/checkout"
+          element={
+            <CheckoutPage
+              items={cartItems}
+              onRemove={removeFromCart}
+              onClearCart={clearCart}
             />
           }
         />
@@ -173,7 +185,7 @@ function App() {
         onRemove={removeFromCart}
         onCheckout={() => {
           closeCart()
-          setIsCheckoutModalOpen(true)
+          navigate('/checkout')
         }}
       />
       <DateTimePicker
@@ -187,13 +199,6 @@ function App() {
         message={toastState.message}
         isVisible={toastState.isVisible}
         onClose={hideToast}
-      />
-      <CheckoutModal
-        isOpen={isCheckoutModalOpen}
-        items={cartItems}
-        onClose={() => setIsCheckoutModalOpen(false)}
-        onRemove={removeFromCart}
-        onClearCart={clearCart}
       />
     </div>
   )

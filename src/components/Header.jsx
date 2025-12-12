@@ -19,7 +19,8 @@ export const Header = ({ cartCount, onCartOpen }) => {
   }, [isMobileMenuOpen])
 
   return (
-    <header className="topbar container">
+    <header className="topbar">
+      <div className="container topbar__container">
       <div className="brand">
         <img src={logo} alt="50 Квартал" className="brand__logo" />
         <div className="brand__text">
@@ -124,6 +125,7 @@ export const Header = ({ cartCount, onCartOpen }) => {
           +7 (999) 000-11-22
         </a>
       </nav>
+      </div>
     </header>
   )
 }

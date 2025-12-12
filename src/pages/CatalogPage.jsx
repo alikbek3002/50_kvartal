@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { getProductImage } from '../utils/imageLoader'
 import { formatBrand } from '../utils/helpers'
 
-export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, categoryChips }) => {
+export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, categoryChips, cartItems = [] }) => {
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -100,10 +100,12 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
           </div>
 
           <div className="catalog__grid">
-            {filteredItems.map((item) => (
+            {filteredItems.map((item) => {
+              const isInCart = cartItems.some(cartItem => cartItem.item.name === item.name)
+              return (
               <article
                 key={item.name}
-                className="product"
+                className={`product ${isInCart ? 'product--in-cart' : ''}`}
                 onClick={() => onSelectItem(item)}
                 role="button"
                 tabIndex={0}
@@ -116,6 +118,7 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
               >
                 <div className="product__thumb">
                   <img src={getProductImage(item)} alt={item.name} loading="lazy" />
+                  {isInCart && <div className="product__in-cart-badge">В корзине</div>}
                 </div>
                 <div className="product__meta">
                   <span className="badge">{formatBrand(item.brand)}</span>
@@ -146,7 +149,8 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                   </button>
                 </div>
               </article>
-            ))}
+            )
+            })}
           </div>
 
           {filteredItems.length === 0 && (
