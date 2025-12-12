@@ -6,17 +6,30 @@
 
 html {
   overflow-x: hidden !important;
-  width: 100%;
-  max-width: 100vw;
+  overflow-y: auto;
+  width: 100% !important;
+  max-width: 100vw !important;
   position: relative;
+  overscroll-behavior-x: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
   overflow-x: hidden !important;
-  width: 100%;
-  max-width: 100vw;
+  overflow-y: auto;
+  width: 100% !important;
+  max-width: 100vw !important;
   margin: 0;
   padding: 0;
+  position: relative;
+  overscroll-behavior-x: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+#root {
+  overflow-x: hidden !important;
+  width: 100% !important;
+  max-width: 100vw !important;
   position: relative;
 }
 
@@ -29,8 +42,8 @@ body {
     linear-gradient(120deg, rgba(255, 255, 255, 0.02), transparent 55%),
     var(--bg);
   overflow-x: hidden !important;
-  width: 100%;
-  max-width: 100vw;
+  width: 100% !important;
+  max-width: 100vw !important;
   position: relative;
 }
 
@@ -40,7 +53,7 @@ body {
   margin: 0 auto;
   padding: 0 40px;
   box-sizing: border-box;
-  overflow-x: hidden;
+  overflow-x: hidden !important;
 }
 
 .topbar {
@@ -4332,8 +4345,26 @@ body {
 
 /* КРИТИЧЕСКОЕ: Полная блокировка горизонтального скролла на мобильных */
 @media (max-width: 767px) {
-  html,
+  html {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+    overscroll-behavior-x: none !important;
+    touch-action: pan-y !important;
+  }
+
   body {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    max-width: 100vw !important;
+    width: 100% !important;
+    overscroll-behavior-x: none !important;
+    touch-action: pan-y !important;
+    position: relative !important;
+  }
+
+  #root {
     overflow-x: hidden !important;
     max-width: 100vw !important;
     width: 100% !important;
@@ -4347,17 +4378,29 @@ body {
   .topbar,
   .modal-overlay,
   .modal-card,
-  .cart-overlay,
-  .cart-panel,
+  .cart-page,
   .footer,
   .datetime-picker,
   .checkout-modal,
   .nav--mobile,
   section,
   main,
-  header {
+  header,
+  .page-content {
     overflow-x: hidden !important;
     max-width: 100vw !important;
+    width: 100% !important;
+  }
+
+  /* Блокируем горизонтальное движение на всех элементах кроме слайдеров */
+  * {
+    overscroll-behavior-x: none;
+  }
+
+  /* Разрешаем горизонтальный скролл только внутри слайдеров */
+  .slider__viewport {
+    touch-action: pan-x pan-y !important;
+    overscroll-behavior-x: contain !important;
   }
 
   .product__thumb img,
@@ -4365,5 +4408,18 @@ body {
   .slider img {
     max-width: 100% !important;
     height: auto !important;
+  }
+
+  img {
+    max-width: 100% !important;
+  }
+}
+
+/* Дополнительная защита для iOS Safari */
+@supports (-webkit-touch-callout: none) {
+  html, body {
+    overflow-x: hidden !important;
+    overscroll-behavior-x: none !important;
+    -webkit-overflow-scrolling: touch;
   }
 }
