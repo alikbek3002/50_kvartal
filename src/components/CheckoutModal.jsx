@@ -15,13 +15,20 @@ export const CheckoutModal = ({ isOpen, items, onClose, onRemove, onClearCart })
   // Блокировка скролла при открытом модальном окне
   useEffect(() => {
     if (isOpen) {
+      // Прокручиваем страницу вверх перед блокировкой
+      window.scrollTo(0, 0)
+      
       // Сохраняем текущую позицию прокрутки
       const scrollY = window.scrollY
       document.body.style.position = 'fixed'
       document.body.style.top = `-${scrollY}px`
+      document.body.style.left = '0'
+      document.body.style.right = '0'
       document.body.style.width = '100%'
       document.body.style.overflow = 'hidden'
       document.documentElement.style.overflow = 'hidden'
+      document.documentElement.style.position = 'relative'
+      document.documentElement.style.height = '100%'
       
       // Блокируем touchmove на body для мобильных устройств
       const preventScroll = (e) => {
@@ -39,9 +46,13 @@ export const CheckoutModal = ({ isOpen, items, onClose, onRemove, onClearCart })
       const scrollY = document.body.style.top
       document.body.style.position = ''
       document.body.style.top = ''
+      document.body.style.left = ''
+      document.body.style.right = ''
       document.body.style.width = ''
       document.body.style.overflow = ''
       document.documentElement.style.overflow = ''
+      document.documentElement.style.position = ''
+      document.documentElement.style.height = ''
       if (scrollY) {
         window.scrollTo(0, parseInt(scrollY || '0') * -1)
       }
@@ -49,9 +60,13 @@ export const CheckoutModal = ({ isOpen, items, onClose, onRemove, onClearCart })
     return () => {
       document.body.style.position = ''
       document.body.style.top = ''
+      document.body.style.left = ''
+      document.body.style.right = ''
       document.body.style.width = ''
       document.body.style.overflow = ''
       document.documentElement.style.overflow = ''
+      document.documentElement.style.position = ''
+      document.documentElement.style.height = ''
     }
   }, [isOpen])
 
@@ -67,6 +82,12 @@ export const CheckoutModal = ({ isOpen, items, onClose, onRemove, onClearCart })
     setIsSubmitting(true)
     setSubmitError(false)
 
+    // Прокручиваем модальное окно вверх при отправке
+    const modal = document.querySelector('.checkout-modal')
+    if (modal) {
+      modal.scrollTop = 0
+    }
+
     try {
       const success = await sendOrderToTelegram(formData, items)
 
@@ -74,6 +95,12 @@ export const CheckoutModal = ({ isOpen, items, onClose, onRemove, onClearCart })
         setIsSubmitting(false)
         setSubmitSuccess(true)
         onClearCart()
+        
+        // Прокручиваем к началу чтобы показать сообщение об успехе
+        if (modal) {
+          modal.scrollTop = 0
+        }
+        
         setTimeout(() => {
           setSubmitSuccess(false)
           setFormData({

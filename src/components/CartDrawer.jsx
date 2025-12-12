@@ -5,13 +5,20 @@ export const CartDrawer = ({ isOpen, items, onClose, onRemove, onCheckout, onEdi
   // Блокировка скролла при открытой корзине
   useEffect(() => {
     if (isOpen) {
+      // Прокручиваем страницу вверх перед блокировкой
+      window.scrollTo(0, 0)
+      
       // Сохраняем текущую позицию прокрутки
       const scrollY = window.scrollY
       document.body.style.position = 'fixed'
       document.body.style.top = `-${scrollY}px`
+      document.body.style.left = '0'
+      document.body.style.right = '0'
       document.body.style.width = '100%'
       document.body.style.overflow = 'hidden'
       document.documentElement.style.overflow = 'hidden'
+      document.documentElement.style.position = 'relative'
+      document.documentElement.style.height = '100%'
       
       // Блокируем touchmove на body для мобильных устройств
       const preventScroll = (e) => {
@@ -29,9 +36,13 @@ export const CartDrawer = ({ isOpen, items, onClose, onRemove, onCheckout, onEdi
       const scrollY = document.body.style.top
       document.body.style.position = ''
       document.body.style.top = ''
+      document.body.style.left = ''
+      document.body.style.right = ''
       document.body.style.width = ''
       document.body.style.overflow = ''
       document.documentElement.style.overflow = ''
+      document.documentElement.style.position = ''
+      document.documentElement.style.height = ''
       if (scrollY) {
         window.scrollTo(0, parseInt(scrollY || '0') * -1)
       }
@@ -39,9 +50,13 @@ export const CartDrawer = ({ isOpen, items, onClose, onRemove, onCheckout, onEdi
     return () => {
       document.body.style.position = ''
       document.body.style.top = ''
+      document.body.style.left = ''
+      document.body.style.right = ''
       document.body.style.width = ''
       document.body.style.overflow = ''
       document.documentElement.style.overflow = ''
+      document.documentElement.style.position = ''
+      document.documentElement.style.height = ''
     }
   }, [isOpen])
 

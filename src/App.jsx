@@ -6,18 +6,17 @@ import { plural } from './utils/helpers'
 import { Header } from './components/Header'
 import { Footer } from './components/Footer'
 import { ProductModal } from './components/ProductModal'
-import { CartDrawer } from './components/CartDrawer'
 import { DateTimePicker } from './components/DateTimePicker'
 import { Toast } from './components/Toast'
 import { HomePage } from './pages/HomePage'
 import { CatalogPage } from './pages/CatalogPage'
 import { CheckoutPage } from './pages/CheckoutPage'
+import { CartPage } from './pages/CartPage'
 
 function App() {
   const navigate = useNavigate()
   const [selectedItem, setSelectedItem] = useState(null)
   const [cartItems, setCartItems] = useState([])
-  const [isCartOpen, setIsCartOpen] = useState(false)
   const [dateTimePickerState, setDateTimePickerState] = useState({ isOpen: false, item: null, mode: null })
   const [editingCartItem, setEditingCartItem] = useState(null)
   const [toastState, setToastState] = useState({ isVisible: false, message: '' })
@@ -118,22 +117,19 @@ function App() {
   }
 
   const closeModal = () => setSelectedItem(null)
-  const openCart = () => setIsCartOpen(true)
-  const closeCart = () => setIsCartOpen(false)
+  const openCart = () => navigate('/cart')
 
   useEffect(() => {
     const handleEsc = (event) => {
       if (event.key === 'Escape') {
         if (selectedItem) {
           closeModal()
-        } else if (isCartOpen) {
-          closeCart()
         }
       }
     }
     window.addEventListener('keydown', handleEsc)
     return () => window.removeEventListener('keydown', handleEsc)
-  }, [selectedItem, isCartOpen])
+  }, [selectedItem])
 
   return (
     <div className="page">
@@ -166,6 +162,17 @@ function App() {
           }
         />
         <Route
+          path="/cart"
+          element={
+            <CartPage
+              items={cartItems}
+              onRemove={removeFromCart}
+              onEditDate={handleEditCartItemDate}
+              onClearCart={clearCart}
+            />
+          }
+        />
+        <Route
           path="/checkout"
           element={
             <CheckoutPage
@@ -182,19 +189,6 @@ function App() {
         onClose={closeModal}
         onAddToCart={(item) => openDateTimePicker(item, 'cart')}
         onQuickRent={(item) => openDateTimePicker(item, 'quick')}
-      />
-      <CartDrawer
-        isOpen={isCartOpen}
-        items={cartItems}
-        onClose={closeCart}
-        onIncrement={incrementCart}
-        onDecrement={decrementCart}
-        onRemove={removeFromCart}
-        onEditDate={handleEditCartItemDate}
-        onCheckout={() => {
-          closeCart()
-          navigate('/checkout')
-        }}
       />
       <DateTimePicker
         isOpen={dateTimePickerState.isOpen}
