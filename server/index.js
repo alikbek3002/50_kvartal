@@ -27,7 +27,26 @@ const IMAGE_STORAGE = String(process.env.IMAGE_STORAGE || 'db').toLowerCase();
 app.set('trust proxy', 1);
 
 // Настройка CORS
-app.use(cors());
+// If CORS_ORIGINS is set (comma-separated list), only allow those origins.
+// Otherwise allow all origins (safe for public read-only endpoints; admin endpoints still require token).
+const corsOriginsRaw = String(process.env.CORS_ORIGINS || '').trim();
+const corsAllowedOrigins = corsOriginsRaw
+  ? corsOriginsRaw.split(',').map((s) => s.trim()).filter(Boolean)
+  : null;
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // allow non-browser requests (no Origin header)
+      if (!origin) return callback(null, true);
+      if (!corsAllowedOrigins) return callback(null, true);
+      return callback(null, corsAllowedOrigins.includes(origin));
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    maxAge: 86400,
+  })
+);
 app.use(express.json());
 
 // Создаем папку для загрузок если её нет (нужно только для IMAGE_STORAGE=fs)
