@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getProductImage } from '../utils/imageLoader'
 import { sendOrderToTelegram } from '../utils/telegram'
+import { formatBookedUntil } from '../utils/helpers'
 
 export const CheckoutPage = ({ items, onRemove, onClearCart }) => {
   const navigate = useNavigate()
@@ -42,6 +43,17 @@ export const CheckoutPage = ({ items, onRemove, onClearCart }) => {
     setSubmitError(false)
 
     try {
+      const blocked = items.filter(({ item }) => {
+        const bookedUntil = item?.bookedUntil
+        return Boolean(bookedUntil) && new Date(bookedUntil).getTime() > Date.now()
+      })
+
+      if (blocked.length) {
+        const first = blocked[0]?.item
+        const until = first?.bookedUntil
+        throw new Error(`Нельзя оформить заказ: товар «${first?.name}» забронирован до ${formatBookedUntil(until)}`)
+      }
+
       const success = await sendOrderToTelegram(formData, items)
 
       if (success) {
@@ -55,7 +67,7 @@ export const CheckoutPage = ({ items, onRemove, onClearCart }) => {
     } catch (error) {
       console.error('Error submitting order:', error)
       setIsSubmitting(false)
-      setSubmitError(true)
+      setSubmitError(error?.message || true)
     }
   }
 
@@ -207,7 +219,7 @@ export const CheckoutPage = ({ items, onRemove, onClearCart }) => {
 
                   {submitError && (
                     <div className="error-message">
-                      ⚠️ Ошибка отправки. Проверьте настройки бота или попробуйте позже.
+                      ⚠️ {typeof submitError === 'string' ? submitError : 'Ошибка отправки. Проверьте настройки бота или попробуйте позже.'}
                     </div>
                   )}
 

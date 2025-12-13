@@ -103,6 +103,8 @@ export default function App() {
   const [bookingEnd, setBookingEnd] = useState('')
   const [bookingError, setBookingError] = useState('')
   const [bookingSuccess, setBookingSuccess] = useState('')
+  const [bookingList, setBookingList] = useState([])
+  const [bookingListLoading, setBookingListLoading] = useState(false)
 
   const loadProducts = async (activeToken) => {
     setLoading(true)
@@ -190,6 +192,10 @@ export default function App() {
     setBookingProduct(p)
     setBookingStart('')
     setBookingEnd('')
+    setBookingList([])
+    if (p?.id) {
+      loadBookings(p.id)
+    }
   }
 
   const closeBooking = () => {
@@ -198,6 +204,52 @@ export default function App() {
     setBookingEnd('')
     setBookingError('')
     setBookingSuccess('')
+    setBookingList([])
+    setBookingListLoading(false)
+  }
+
+  const formatDateTime = (value) => {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return String(value)
+    return date.toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  const loadBookings = async (productId) => {
+    setBookingListLoading(true)
+    try {
+      const data = await apiFetch(`/api/admin/bookings?productId=${encodeURIComponent(productId)}`, { token })
+      setBookingList(Array.isArray(data) ? data : [])
+    } catch (e) {
+      setBookingError(e.message || 'Ошибка загрузки броней')
+      setBookingList([])
+    } finally {
+      setBookingListLoading(false)
+    }
+  }
+
+  const removeBooking = async (bookingId) => {
+    if (!bookingId) return
+    setLoading(true)
+    setBookingError('')
+    setBookingSuccess('')
+
+    try {
+      await apiFetch(`/api/admin/bookings/${bookingId}`, { token, method: 'DELETE' })
+      setBookingSuccess('Бронь удалена')
+      if (bookingProduct?.id) {
+        await loadBookings(bookingProduct.id)
+      }
+    } catch (e) {
+      setBookingError(e.message || 'Ошибка удаления брони')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const submitBooking = async (e) => {
@@ -233,6 +285,9 @@ export default function App() {
       })
 
       setBookingSuccess('Бронь создана')
+      if (bookingProduct?.id) {
+        await loadBookings(bookingProduct.id)
+      }
       // оставим модалку открытой, чтобы менеджер видел успех
     } catch (e2) {
       setBookingError(e2.message || 'Ошибка создания брони')
@@ -551,6 +606,25 @@ export default function App() {
                   </button>
                 </div>
               </form>
+
+              <div className="cart-page" style={{ padding: 12 }}>
+                <strong>Текущие брони</strong>
+                <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+                  {bookingListLoading && <div style={{ opacity: 0.8 }}>Загрузка...</div>}
+                  {!bookingListLoading && bookingList.length === 0 && <div style={{ opacity: 0.8 }}>Броней нет</div>}
+                  {!bookingListLoading && bookingList.map((b) => (
+                    <div key={b.id} style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'grid', gap: 2 }}>
+                        <div style={{ fontWeight: 600 }}>#{b.id}</div>
+                        <div style={{ opacity: 0.9 }}>{formatDateTime(b.startAt)} — {formatDateTime(b.endAt)}</div>
+                      </div>
+                      <button className="button ghost danger" type="button" onClick={() => removeBooking(b.id)} disabled={loading}>
+                        Убрать бронь
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>

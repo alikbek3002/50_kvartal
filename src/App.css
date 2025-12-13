@@ -652,6 +652,16 @@ body {
   z-index: 1;
 }
 
+/* Товар забронирован сейчас */
+.product--booked .product__thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 1;
+}
+
 .product__in-cart-badge {
   position: absolute;
   top: 50%;
@@ -668,6 +678,23 @@ body {
   z-index: 2;
   pointer-events: none;
   box-shadow: 0 4px 12px rgba(255, 106, 0, 0.4);
+}
+
+.product__booked-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  z-index: 2;
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 .modal-overlay {

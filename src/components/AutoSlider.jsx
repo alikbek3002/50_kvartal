@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { getProductImage } from '../utils/imageLoader'
-import { formatBrand } from '../utils/helpers'
+import { formatBrand, formatBookedUntil } from '../utils/helpers'
 
 export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cartItems = [] }) => {
   const trackRef = useRef(null)
@@ -57,10 +57,12 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cart
         >
           {duplicatedItems.map((item, idx) => {
             const isInCart = cartItems.some(cartItem => cartItem.item.name === item.name)
+            const bookedUntil = item?.bookedUntil
+            const isBooked = Boolean(bookedUntil) && new Date(bookedUntil).getTime() > Date.now()
             return (
             <article
               key={`${item.name}-${idx}`}
-              className={`product ${isMobile ? 'slider__card-mobile' : 'slider__card-marquee'} ${isInCart ? 'product--in-cart' : ''}`}
+              className={`product ${isMobile ? 'slider__card-mobile' : 'slider__card-marquee'} ${isInCart ? 'product--in-cart' : ''} ${isBooked ? 'product--booked' : ''}`}
               onClick={() => onSelectItem(item)}
               role="button"
               tabIndex={0}
@@ -69,6 +71,7 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cart
               <div className="product__thumb">
                 <img src={getProductImage(item)} alt={item.name} loading="lazy" />
                 {isInCart && <div className="product__in-cart-badge">В корзине</div>}
+                {isBooked && <div className="product__booked-badge">Забронировано до {formatBookedUntil(bookedUntil)}</div>}
               </div>
               <div className="product__meta">
                 <span className="badge">{formatBrand(item.brand)}</span>
@@ -80,8 +83,10 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cart
                 <button
                   className="button primary"
                   type="button"
+                  disabled={isBooked}
                   onClick={(event) => {
                     event.stopPropagation()
+                    if (isBooked) return
                     onQuickRent(item)
                   }}
                 >
@@ -90,8 +95,10 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cart
                 <button
                   className="button ghost"
                   type="button"
+                  disabled={isBooked}
                   onClick={(event) => {
                     event.stopPropagation()
+                    if (isBooked) return
                     onAddToCart(item)
                   }}
                 >

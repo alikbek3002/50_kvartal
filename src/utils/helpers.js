@@ -7,3 +7,16 @@ export const plural = (value, forms) => {
 }
 
 export const formatBrand = (brand) => (brand && brand !== '—' ? brand : 'бренд уточняется')
+
+export const formatBookedUntil = (isoString) => {
+  if (!isoString) return ''
+  const date = new Date(isoString)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}

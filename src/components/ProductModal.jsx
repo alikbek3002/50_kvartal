@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { getProductImage } from '../utils/imageLoader'
-import { formatBrand } from '../utils/helpers'
+import { formatBrand, formatBookedUntil } from '../utils/helpers'
 
 export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
   // Блокировка скролла при открытом модальном окне
@@ -62,6 +62,8 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
   }, [item])
 
   if (!item) return null
+  const bookedUntil = item?.bookedUntil
+  const isBooked = Boolean(bookedUntil) && new Date(bookedUntil).getTime() > Date.now()
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
@@ -78,7 +80,9 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
           </div>
           <h3>{item.name}</h3>
           <div className="modal-status">
-            <span className="modal-stock-note">Позиция доступна к бронированию</span>
+            <span className="modal-stock-note">
+              {isBooked ? `Забронировано до ${formatBookedUntil(bookedUntil)}` : 'Позиция доступна к бронированию'}
+            </span>
             <span className="modal-price">{item.pricePerDay || 100} сом/сутки</span>
           </div>
           <p className="modal-copy">
@@ -100,10 +104,10 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
             </div>
           </dl>
           <div className="modal-actions">
-            <button className="button primary modal-cta" type="button" onClick={() => onQuickRent(item)}>
+            <button className="button primary modal-cta" type="button" onClick={() => onQuickRent(item)} disabled={isBooked}>
               Быстрая аренда
             </button>
-            <button className="button ghost modal-cta" type="button" onClick={() => onAddToCart(item)}>
+            <button className="button ghost modal-cta" type="button" onClick={() => onAddToCart(item)} disabled={isBooked}>
               Добавить в корзину
             </button>
           </div>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Route, Routes, useNavigate } from 'react-router-dom'
 import './App.css'
-import { plural } from './utils/helpers'
+import { plural, formatBookedUntil } from './utils/helpers'
 import { API_URL } from './config'
 import { Header } from './components/Header'
 import { Footer } from './components/Footer'
@@ -105,6 +105,12 @@ function App() {
   }
 
   const openDateTimePicker = (item, mode) => {
+    const bookedUntil = item?.bookedUntil
+    const isBooked = Boolean(bookedUntil) && new Date(bookedUntil).getTime() > Date.now()
+    if (isBooked) {
+      showToast(`Товар забронирован до ${formatBookedUntil(bookedUntil)}`)
+      return
+    }
     setDateTimePickerState({ isOpen: true, item, mode })
   }
 

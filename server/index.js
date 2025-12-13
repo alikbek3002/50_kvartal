@@ -220,19 +220,28 @@ app.get('/api/admin/products', requireAdmin, async (req, res) => {
     }
     const result = await pool.query(
       `SELECT
-        id,
-        name,
-        description,
-        category,
-        brand,
-        stock,
-        image_url AS "imageUrl",
-        price_per_day AS "pricePerDay",
-        is_active AS "isActive",
-        created_at AS "createdAt",
-        updated_at AS "updatedAt"
-      FROM products
-      ORDER BY created_at DESC`
+        p.id,
+        p.name,
+        p.description,
+        p.category,
+        p.brand,
+        p.stock,
+        p.image_url AS "imageUrl",
+        p.price_per_day AS "pricePerDay",
+        p.is_active AS "isActive",
+        p.created_at AS "createdAt",
+        p.updated_at AS "updatedAt",
+        (
+          SELECT b.end_at
+          FROM bookings b
+          WHERE b.product_id = p.id
+            AND b.start_at <= NOW()
+            AND b.end_at > NOW()
+          ORDER BY b.end_at DESC
+          LIMIT 1
+        ) AS "bookedUntil"
+      FROM products p
+      ORDER BY p.created_at DESC`
     );
 
     res.json(result.rows);
@@ -364,19 +373,28 @@ app.get('/api/products', async (req, res) => {
     }
     const result = await pool.query(
       `SELECT
-        id,
-        name,
-        description,
-        category,
-        brand,
-        stock,
-        image_url AS "imageUrl",
-        price_per_day AS "pricePerDay",
-        created_at AS "createdAt",
-        updated_at AS "updatedAt"
-      FROM products
-      WHERE is_active = TRUE
-      ORDER BY created_at DESC`
+        p.id,
+        p.name,
+        p.description,
+        p.category,
+        p.brand,
+        p.stock,
+        p.image_url AS "imageUrl",
+        p.price_per_day AS "pricePerDay",
+        p.created_at AS "createdAt",
+        p.updated_at AS "updatedAt",
+        (
+          SELECT b.end_at
+          FROM bookings b
+          WHERE b.product_id = p.id
+            AND b.start_at <= NOW()
+            AND b.end_at > NOW()
+          ORDER BY b.end_at DESC
+          LIMIT 1
+        ) AS "bookedUntil"
+      FROM products p
+      WHERE p.is_active = TRUE
+      ORDER BY p.created_at DESC`
     );
 
     res.json(result.rows);
@@ -520,6 +538,54 @@ app.post('/api/admin/bookings', requireAdmin, requireDbReady, async (req, res) =
   } catch (error) {
     console.error('Ошибка создания брони:', error);
     return res.status(500).json({ error: 'Ошибка при создании брони' });
+  }
+});
+
+// Admin: список броней по товару
+app.get('/api/admin/bookings', requireAdmin, requireDbReady, async (req, res) => {
+  try {
+    const productId = Number(req.query?.productId);
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return res.status(400).json({ error: 'productId is required' });
+    }
+
+    const result = await pool.query(
+      `SELECT
+        id,
+        product_id AS "productId",
+        start_at AS "startAt",
+        end_at AS "endAt",
+        created_at AS "createdAt"
+      FROM bookings
+      WHERE product_id = $1
+      ORDER BY start_at ASC`,
+      [productId]
+    );
+
+    return res.json(result.rows);
+  } catch (error) {
+    console.error('Ошибка получения броней:', error);
+    return res.status(500).json({ error: 'Ошибка при получении броней' });
+  }
+});
+
+// Admin: удалить бронь
+app.delete('/api/admin/bookings/:id', requireAdmin, requireDbReady, async (req, res) => {
+  try {
+    const id = Number(req.params?.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
+
+    const deleted = await pool.query('DELETE FROM bookings WHERE id = $1 RETURNING id', [id]);
+    if (!deleted.rowCount) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Ошибка удаления брони:', error);
+    return res.status(500).json({ error: 'Ошибка при удалении брони' });
   }
 });
 
