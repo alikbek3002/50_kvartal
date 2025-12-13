@@ -368,6 +368,16 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Root (для быстрой проверки в браузере)
+app.get('/', (req, res) => {
+  res.json({
+    service: '50kvartal-api',
+    health: '/health',
+    products: '/api/products',
+    adminLogin: '/api/admin/login',
+  });
+});
+
 if (requireDb) {
   await startDb();
 } else {
