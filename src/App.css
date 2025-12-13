@@ -710,6 +710,7 @@ body {
   overflow: hidden;
   touch-action: none;
   overscroll-behavior: contain;
+  animation: fadeIn 0.3s ease-out forwards;
 }
 
 .modal-card {
@@ -730,6 +731,17 @@ body {
   -webkit-overflow-scrolling: touch;
   touch-action: auto;
   overscroll-behavior: contain;
+  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .modal-media {
@@ -891,6 +903,7 @@ body {
   -webkit-overflow-scrolling: touch;
   touch-action: none;
   overscroll-behavior: contain;
+  animation: fadeIn 0.3s ease-out forwards;
 }
 
 .cart-panel {
@@ -908,6 +921,12 @@ body {
   -webkit-overflow-scrolling: touch;
   touch-action: auto;
   overscroll-behavior: contain;
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
 }
 
 .cart-panel__header {
@@ -1862,7 +1881,7 @@ body {
 
   /* Modal */
   .modal-overlay {
-    padding: 16px;
+    padding: 0;
     align-items: flex-end;
   }
 
@@ -1870,9 +1889,17 @@ body {
     grid-template-columns: 1fr;
     padding: 20px;
     gap: 18px;
-    max-height: 90vh;
+    max-height: 85vh;
+    width: 100%;
     overflow-y: auto;
-    border-radius: 20px 20px 0 0;
+    border-radius: 24px 24px 0 0;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    margin: 0;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
   }
 
   .modal-media {
@@ -1909,13 +1936,27 @@ body {
   .cart-panel {
     width: 100%;
     padding: 24px 20px;
-    border-radius: 20px 20px 0 0;
+    border-radius: 24px 24px 0 0;
     max-height: 85vh;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .cart-overlay {
     padding: 0;
     align-items: flex-end;
+    justify-content: center;
+  }
+
+  .datetime-picker,
+  .checkout-modal {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 24px 24px 0 0;
+    margin: 0;
+    max-height: 85vh;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   /* Footer */
