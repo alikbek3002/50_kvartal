@@ -9,6 +9,13 @@
 //   <backend>/api/telegram/webhook
 // If TELEGRAM_WEBHOOK_SECRET is set, it is passed as Telegram secret_token.
 
+// Optional .env support for local dev
+try {
+  await import('dotenv/config');
+} catch {
+  // ok
+}
+
 const backendBaseUrl = process.argv[2];
 
 function requiredEnv(name) {

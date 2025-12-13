@@ -756,6 +756,14 @@ app.post('/api/telegram/webhook', requireDbReady, async (req, res) => {
     const cb = update.callback_query;
     if (!cb) return res.json({ ok: true });
 
+    try {
+      const from = cb.from?.username || cb.from?.id || 'unknown';
+      const dataPreview = String(cb.data || '').slice(0, 80);
+      console.log('[telegram] callback_query:', { from, data: dataPreview });
+    } catch {
+      // ignore logging failures
+    }
+
     const callbackId = cb.id;
     const data = String(cb.data || '');
     const message = cb.message;
