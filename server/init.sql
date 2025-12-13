@@ -123,6 +123,14 @@ FROM bookings b
 LEFT JOIN product_units u ON u.product_id = b.product_id AND u.unit_no = 1
 WHERE b.unit_id IS NULL AND u.id IS NULL;
 
+-- Проставляем unit_id для старых броней (иначе они блокируют все единицы в проверке доступности)
+UPDATE bookings b
+SET unit_id = u.id
+FROM product_units u
+WHERE b.unit_id IS NULL
+  AND u.product_id = b.product_id
+  AND u.unit_no = 1;
+
 UPDATE bookings b
 SET unit_id = (
   SELECT u.id
