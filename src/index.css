@@ -24,7 +24,7 @@
 html {
   overflow-x: hidden !important;
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
 }
 
 body {
@@ -33,8 +33,17 @@ body {
   background: var(--bg);
   overflow-x: hidden !important;
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
   overscroll-behavior-x: none;
+}
+
+/* iOS/Safari can still show horizontal scroll due to sub-pixel layout.
+   overflow: clip prevents any horizontal scrolling while keeping layout intact. */
+@supports (overflow: clip) {
+  html,
+  body {
+    overflow-x: clip !important;
+  }
 }
 
 /* Prevent body scroll when modal/menu is open */

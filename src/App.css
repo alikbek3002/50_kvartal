@@ -8,7 +8,7 @@ html {
   overflow-x: hidden !important;
   overflow-y: auto;
   width: 100% !important;
-  max-width: 100vw !important;
+  max-width: 100% !important;
   position: relative;
   overscroll-behavior-x: none;
   -webkit-overflow-scrolling: touch;
@@ -18,7 +18,7 @@ body {
   overflow-x: hidden !important;
   overflow-y: auto;
   width: 100% !important;
-  max-width: 100vw !important;
+  max-width: 100% !important;
   margin: 0;
   padding: 0;
   position: relative;
@@ -29,8 +29,16 @@ body {
 #root {
   overflow-x: hidden !important;
   width: 100% !important;
-  max-width: 100vw !important;
+  max-width: 100% !important;
   position: relative;
+}
+
+@supports (overflow: clip) {
+  html,
+  body,
+  #root {
+    overflow-x: clip !important;
+  }
 }
 
 .page {
