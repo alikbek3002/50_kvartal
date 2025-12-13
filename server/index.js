@@ -892,6 +892,12 @@ app.post('/api/orders', requireDbReady, async (req, res) => {
     if (error?.code === 'TELEGRAM_NOT_CONFIGURED') {
       return res.status(500).json({ error: error.message });
     }
+
+    // Surface Telegram API errors to client for easier production diagnostics.
+    // Example: "Telegram API error: Bad Request: chat not found"
+    if (String(error?.message || '').startsWith('Telegram API error:')) {
+      return res.status(502).json({ error: String(error.message) });
+    }
     if (String(error?.message || '').includes('Invalid')) {
       return res.status(400).json({ error: error.message });
     }
