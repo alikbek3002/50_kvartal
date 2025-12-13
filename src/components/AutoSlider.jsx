@@ -64,16 +64,17 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cart
                 Object.prototype.hasOwnProperty.call(item, 'busyUnitsNow') ||
                 Object.prototype.hasOwnProperty.call(item, 'nextAvailableAt'))
             const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
+            const busyUnitsNow = Number.isFinite(Number(item?.busyUnitsNow)) ? Number(item.busyUnitsNow) : 0
             const nextAvailableAt = item?.nextAvailableAt
             const bookedUntilLegacy = item?.bookedUntil
             const isOutOfStock = stock <= 0
-            const isAllBusyNow = hasAvailabilityV2
-              ? !isOutOfStock && availableNow <= 0
+            const isBookedNow = hasAvailabilityV2
+              ? !isOutOfStock && busyUnitsNow > 0
               : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
             return (
             <article
               key={`${item.name}-${idx}`}
-              className={`product ${isMobile ? 'slider__card-mobile' : 'slider__card-marquee'} ${isInCart ? 'product--in-cart' : ''} ${isAllBusyNow ? 'product--booked' : ''}`}
+              className={`product ${isMobile ? 'slider__card-mobile' : 'slider__card-marquee'} ${isInCart ? 'product--in-cart' : ''} ${isBookedNow ? 'product--booked' : ''}`}
               onClick={() => onSelectItem(item)}
               role="button"
               tabIndex={0}
@@ -82,14 +83,14 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cart
               <div className="product__thumb">
                 <img src={getProductImage(item)} alt={item.name} loading="lazy" />
                 {isInCart && <div className="product__in-cart-badge">В корзине</div>}
-                {(isOutOfStock || isAllBusyNow) && (
+                {(isOutOfStock || isBookedNow) && (
                   <div className="product__booked-badge">
                     {isOutOfStock
                       ? 'Нет в наличии'
                       : hasAvailabilityV2
                         ? nextAvailableAt
-                          ? `Свободно с ${formatBookedUntil(nextAvailableAt)}`
-                          : 'Сейчас занято'
+                          ? `Бронь до ${formatBookedUntil(nextAvailableAt)}`
+                          : 'Забронировано'
                         : bookedUntilLegacy
                           ? `Забронировано до ${formatBookedUntil(bookedUntilLegacy)}`
                           : 'Забронировано'}
@@ -109,10 +110,10 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cart
                 <button
                   className="button primary"
                   type="button"
-                  disabled={isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)}
+                  disabled={isOutOfStock || (!hasAvailabilityV2 && isBookedNow)}
                   onClick={(event) => {
                     event.stopPropagation()
-                    if (isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)) return
+                    if (isOutOfStock || (!hasAvailabilityV2 && isBookedNow)) return
                     onQuickRent(item)
                   }}
                 >
@@ -121,10 +122,10 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cart
                 <button
                   className="button ghost"
                   type="button"
-                  disabled={isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)}
+                  disabled={isOutOfStock || (!hasAvailabilityV2 && isBookedNow)}
                   onClick={(event) => {
                     event.stopPropagation()
-                    if (isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)) return
+                    if (isOutOfStock || (!hasAvailabilityV2 && isBookedNow)) return
                     onAddToCart(item)
                   }}
                 >

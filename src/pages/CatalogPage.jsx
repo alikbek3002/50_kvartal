@@ -109,16 +109,17 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                   Object.prototype.hasOwnProperty.call(item, 'busyUnitsNow') ||
                   Object.prototype.hasOwnProperty.call(item, 'nextAvailableAt'))
               const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
+              const busyUnitsNow = Number.isFinite(Number(item?.busyUnitsNow)) ? Number(item.busyUnitsNow) : 0
               const nextAvailableAt = item?.nextAvailableAt
               const bookedUntilLegacy = item?.bookedUntil
               const isOutOfStock = stock <= 0
-              const isAllBusyNow = hasAvailabilityV2
-                ? !isOutOfStock && availableNow <= 0
+              const isBookedNow = hasAvailabilityV2
+                ? !isOutOfStock && busyUnitsNow > 0
                 : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
               return (
               <article
                 key={item.id ?? item.name}
-                className={`product ${isInCart ? 'product--in-cart' : ''} ${isAllBusyNow ? 'product--booked' : ''}`}
+                className={`product ${isInCart ? 'product--in-cart' : ''} ${isBookedNow ? 'product--booked' : ''}`}
                 onClick={() => onSelectItem(item)}
                 role="button"
                 tabIndex={0}
@@ -132,14 +133,14 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                 <div className="product__thumb">
                   <img src={getProductImage(item)} alt={item.name} loading="lazy" />
                   {isInCart && <div className="product__in-cart-badge">В корзине</div>}
-                  {(isOutOfStock || isAllBusyNow) && (
+                  {(isOutOfStock || isBookedNow) && (
                     <div className="product__booked-badge">
                       {isOutOfStock
                         ? 'Нет в наличии'
                         : hasAvailabilityV2
                           ? nextAvailableAt
-                            ? `Свободно с ${formatBookedUntil(nextAvailableAt)}`
-                            : 'Сейчас занято'
+                            ? `Бронь до ${formatBookedUntil(nextAvailableAt)}`
+                            : 'Забронировано'
                           : bookedUntilLegacy
                             ? `Забронировано до ${formatBookedUntil(bookedUntilLegacy)}`
                             : 'Забронировано'}
@@ -159,10 +160,10 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                   <button
                     className="button primary"
                     type="button"
-                    disabled={isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)}
+                    disabled={isOutOfStock || (!hasAvailabilityV2 && isBookedNow)}
                     onClick={(event) => {
                       event.stopPropagation()
-                      if (isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)) return
+                      if (isOutOfStock || (!hasAvailabilityV2 && isBookedNow)) return
                       onQuickRent(item)
                     }}
                   >
@@ -171,10 +172,10 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                   <button
                     className="button ghost"
                     type="button"
-                    disabled={isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)}
+                    disabled={isOutOfStock || (!hasAvailabilityV2 && isBookedNow)}
                     onClick={(event) => {
                       event.stopPropagation()
-                      if (isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)) return
+                      if (isOutOfStock || (!hasAvailabilityV2 && isBookedNow)) return
                       onAddToCart(item)
                     }}
                   >

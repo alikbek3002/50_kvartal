@@ -484,9 +484,19 @@ export default function App() {
               <div style={{ marginTop: 12 }}>
                 <div className="catalog__grid">
                   {products.map((p) => (
-                    <article key={p.id} className="product product--admin">
+                    <article
+                      key={p.id}
+                      className={`product product--admin ${Number(p.busyUnitsNow ?? 0) > 0 ? 'product--booked' : ''}`}
+                    >
                       <div className="product__thumb">
                         <img src={getProductImage(p)} alt={p.name} loading="lazy" />
+                        {Number(p.busyUnitsNow ?? 0) > 0 && (
+                          <div className="product__booked-badge">
+                            {p.nextAvailableAt
+                              ? `Бронь до ${formatDateTimeRu(p.nextAvailableAt)}`
+                              : 'Забронировано'}
+                          </div>
+                        )}
                       </div>
                       <div className="product__meta">
                         <span className="badge">{formatBrand(p.brand)}</span>
@@ -498,8 +508,8 @@ export default function App() {
                             Свободно сейчас: {Math.max(0, Number(p.availableNow ?? 0))} / {Math.max(0, Number(p.totalUnits ?? p.stock ?? 0))}
                           </span>
                         )}
-                        {Number(p.stock ?? 0) > 0 && Number(p.availableNow ?? 0) <= 0 && p.nextAvailableAt && (
-                          <span className="badge badge--ghost">Свободно с {formatDateTimeRu(p.nextAvailableAt)}</span>
+                        {Number(p.busyUnitsNow ?? 0) > 0 && p.nextAvailableAt && (
+                          <span className="badge badge--ghost">Ближайшая бронь до {formatDateTimeRu(p.nextAvailableAt)}</span>
                         )}
                       </div>
                       <h3>{p.name}</h3>

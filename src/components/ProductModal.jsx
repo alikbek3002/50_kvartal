@@ -69,11 +69,12 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
       Object.prototype.hasOwnProperty.call(item, 'busyUnitsNow') ||
       Object.prototype.hasOwnProperty.call(item, 'nextAvailableAt'))
   const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
+  const busyUnitsNow = Number.isFinite(Number(item?.busyUnitsNow)) ? Number(item.busyUnitsNow) : 0
   const nextAvailableAt = item?.nextAvailableAt
   const bookedUntilLegacy = item?.bookedUntil
   const isOutOfStock = stock <= 0
-  const isAllBusyNow = hasAvailabilityV2
-    ? !isOutOfStock && availableNow <= 0
+  const isBookedNow = hasAvailabilityV2
+    ? !isOutOfStock && busyUnitsNow > 0
     : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -95,12 +96,12 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
               {isOutOfStock
                 ? 'Нет в наличии'
                 : hasAvailabilityV2
-                  ? isAllBusyNow
+                  ? isBookedNow
                     ? nextAvailableAt
-                      ? `Сейчас занято · свободно с ${formatBookedUntil(nextAvailableAt)}`
-                      : 'Сейчас занято'
+                      ? `Бронь до ${formatBookedUntil(nextAvailableAt)}`
+                      : 'Забронировано'
                     : `Доступно сейчас: ${Math.max(0, availableNow)} из ${stock}`
-                  : isAllBusyNow
+                  : isBookedNow
                     ? bookedUntilLegacy
                       ? `Забронировано до ${formatBookedUntil(bookedUntilLegacy)}`
                       : 'Забронировано'
@@ -131,7 +132,7 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
               className="button primary modal-cta"
               type="button"
               onClick={() => onQuickRent(item)}
-              disabled={isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)}
+              disabled={isOutOfStock || (!hasAvailabilityV2 && isBookedNow)}
             >
               Быстрая аренда
             </button>
@@ -139,7 +140,7 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
               className="button ghost modal-cta"
               type="button"
               onClick={() => onAddToCart(item)}
-              disabled={isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)}
+              disabled={isOutOfStock || (!hasAvailabilityV2 && isBookedNow)}
             >
               Добавить в корзину
             </button>
