@@ -425,6 +425,8 @@ export default function App() {
         brand: form.brand.trim() || null,
         stock: Number(form.stock) || 0,
         pricePerDay: Number(form.pricePerDay) || 100,
+        // Backward-compatible: older backend versions only support imageUrl
+        imageUrl: Array.isArray(form.imageUrls) && form.imageUrls[0] ? form.imageUrls[0] : null,
         imageUrls: Array.isArray(form.imageUrls) ? form.imageUrls : [],
         description: form.description.trim() || null,
         isActive: Boolean(form.isActive),
