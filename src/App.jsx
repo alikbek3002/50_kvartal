@@ -32,6 +32,19 @@ function App() {
       try {
         const response = await fetch(`${API_URL}/api/products`)
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+        const contentType = response.headers.get('content-type') || ''
+        // On hosting, a common misconfig is VITE_API_URL pointing to the frontend.
+        // Then /api/products returns index.html (200 OK) and JSON parsing fails.
+        if (!contentType.includes('application/json')) {
+          const text = await response.text().catch(() => '')
+          const preview = String(text).slice(0, 120).replace(/\s+/g, ' ').trim()
+          const hint = preview.toLowerCase().includes('<!doctype html') || preview.toLowerCase().includes('<html')
+            ? 'Похоже, API_URL указывает на фронтенд (вернулся HTML), а не на бэкенд.'
+            : 'Бэкенд вернул не-JSON ответ.'
+          throw new Error(`${hint} Проверь VITE_API_URL на хостинге.`)
+        }
+
         const data = await response.json()
         if (!isMounted) return
         setProducts(Array.isArray(data) ? data : [])
