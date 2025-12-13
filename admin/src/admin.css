@@ -1,0 +1,147 @@
+.page {
+  min-height: 100vh;
+  color: var(--text-primary);
+  background:
+    radial-gradient(circle at 15% 25%, rgba(255, 106, 0, 0.18), transparent 45%),
+    radial-gradient(circle at 75% 0%, rgba(255, 255, 255, 0.06), transparent 30%),
+    linear-gradient(120deg, rgba(255, 255, 255, 0.02), transparent 55%),
+    var(--bg);
+}
+
+.page-content {
+  padding: 28px 0 60px;
+}
+
+.container {
+  width: 100%;
+  max-width: min(100%, 1200px);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.topbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.topbar__layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 0;
+  gap: 16px;
+}
+
+.topbar__brand {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.topbar__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.section__heading {
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.lead {
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+.cart-page {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.button {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.button.primary {
+  background: rgba(255, 106, 0, 0.16);
+  border-color: rgba(255, 106, 0, 0.35);
+}
+
+.button.ghost {
+  background: transparent;
+}
+
+.button.ghost.danger {
+  border-color: rgba(255, 80, 80, 0.35);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.checkout-page__form-wrapper {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 16px;
+}
+
+.checkout-page__form h3,
+.checkout-page__form h1,
+.checkout-page__form h2 {
+  margin: 0 0 12px;
+}
+
+.form-group {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text-primary);
+}
+
+.error-message {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 80, 80, 0.35);
+  background: rgba(255, 80, 80, 0.08);
+}
+
+table th,
+table td {
+  font-size: 0.9rem;
+}
+
+code {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: 8px;
+}
