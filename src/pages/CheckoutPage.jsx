@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getProductImage } from '../utils/imageLoader'
 import { sendOrderToTelegram } from '../utils/telegram'
@@ -13,6 +13,23 @@ export const CheckoutPage = ({ items, onRemove, onClearCart }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [submitError, setSubmitError] = useState(false)
+
+  useEffect(() => {
+    if (!submitSuccess) return
+
+    // После успешной отправки iOS Safari часто оставляет пользователя внизу
+    // (из-за сохранённой позиции скролла при перерисовке). Возвращаем к хедеру.
+    const scrollToHeader = () => {
+      const header = document.querySelector('header.topbar') || document.querySelector('header')
+      if (header && typeof header.scrollIntoView === 'function') {
+        header.scrollIntoView({ block: 'start' })
+        return
+      }
+      window.scrollTo(0, 0)
+    }
+
+    requestAnimationFrame(scrollToHeader)
+  }, [submitSuccess])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target

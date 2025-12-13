@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import multer from 'multer';
 import cors from 'cors';
@@ -11,6 +12,9 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Railway/Reverse proxy (нужно для корректного req.protocol при HTTPS)
+app.set('trust proxy', 1);
 
 // Настройка CORS
 app.use(cors());
@@ -54,11 +58,30 @@ const pool = new pg.Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
+async function initDb() {
+  const initSqlPath = path.join(__dirname, 'init.sql');
+  const sql = fs.readFileSync(initSqlPath, 'utf8');
+  await pool.query(sql);
+}
+
+function requireAdmin(req, res, next) {
+  const adminToken = process.env.ADMIN_TOKEN;
+  if (!adminToken) return next();
+
+  const header = req.get('authorization') || '';
+  const token = header.startsWith('Bearer ') ? header.slice('Bearer '.length) : null;
+  if (token !== adminToken) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  next();
+}
+
 // Раздача статических файлов
 app.use('/uploads', express.static(uploadsDir));
 
 // API для загрузки изображения
-app.post('/api/upload', upload.single('image'), async (req, res) => {
+app.post('/api/upload', requireAdmin, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Файл не загружен' });
@@ -77,13 +100,30 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
 });
 
 // API для добавления товара
-app.post('/api/products', async (req, res) => {
+app.post('/api/products', requireAdmin, async (req, res) => {
   try {
-    const { name, description, price, image_url, category } = req.body;
+    const {
+      name,
+      description,
+      category,
+      brand,
+      stock,
+      image_url,
+      imageUrl,
+      price_per_day,
+      pricePerDay,
+      price,
+    } = req.body;
+
+    const resolvedImageUrl = image_url ?? imageUrl ?? null;
+    const resolvedPricePerDay = price_per_day ?? pricePerDay ?? price ?? 100;
+    const resolvedStock = stock ?? 0;
     
     const result = await pool.query(
-      'INSERT INTO products (name, description, price, image_url, category) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [name, description, price, image_url, category]
+      `INSERT INTO products (name, description, category, brand, stock, image_url, price_per_day)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [name, description ?? null, category ?? null, brand ?? null, resolvedStock, resolvedImageUrl, resolvedPricePerDay]
     );
     
     res.json({ success: true, product: result.rows[0] });
@@ -96,7 +136,23 @@ app.post('/api/products', async (req, res) => {
 // API для получения всех товаров
 app.get('/api/products', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM products ORDER BY created_at DESC');
+    const result = await pool.query(
+      `SELECT
+        id,
+        name,
+        description,
+        category,
+        brand,
+        stock,
+        image_url AS "imageUrl",
+        price_per_day AS "pricePerDay",
+        created_at AS "createdAt",
+        updated_at AS "updatedAt"
+      FROM products
+      WHERE is_active = TRUE
+      ORDER BY created_at DESC`
+    );
+
     res.json(result.rows);
   } catch (error) {
     console.error('Ошибка получения товаров:', error);
@@ -105,14 +161,54 @@ app.get('/api/products', async (req, res) => {
 });
 
 // API для обновления товара
-app.put('/api/products/:id', async (req, res) => {
+app.put('/api/products/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, price, image_url, category } = req.body;
+    const {
+      name,
+      description,
+      category,
+      brand,
+      stock,
+      image_url,
+      imageUrl,
+      price_per_day,
+      pricePerDay,
+      price,
+      is_active,
+      isActive,
+    } = req.body;
+
+    const resolvedImageUrl = image_url ?? imageUrl ?? null;
+    const resolvedPricePerDay = price_per_day ?? pricePerDay ?? price ?? 100;
+    const resolvedStock = stock ?? 0;
+    const resolvedIsActive = is_active ?? isActive;
     
     const result = await pool.query(
-      'UPDATE products SET name = $1, description = $2, price = $3, image_url = $4, category = $5 WHERE id = $6 RETURNING *',
-      [name, description, price, image_url, category, id]
+      `UPDATE products
+       SET
+         name = $1,
+         description = $2,
+         category = $3,
+         brand = $4,
+         stock = $5,
+         image_url = $6,
+         price_per_day = $7,
+         is_active = COALESCE($8, is_active),
+         updated_at = NOW()
+       WHERE id = $9
+       RETURNING *`,
+      [
+        name,
+        description ?? null,
+        category ?? null,
+        brand ?? null,
+        resolvedStock,
+        resolvedImageUrl,
+        resolvedPricePerDay,
+        resolvedIsActive,
+        id,
+      ]
     );
     
     res.json({ success: true, product: result.rows[0] });
@@ -123,7 +219,7 @@ app.put('/api/products/:id', async (req, res) => {
 });
 
 // API для удаления товара
-app.delete('/api/products/:id', async (req, res) => {
+app.delete('/api/products/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     await pool.query('DELETE FROM products WHERE id = $1', [id]);
@@ -138,6 +234,8 @@ app.delete('/api/products/:id', async (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'OK' });
 });
+
+await initDb();
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

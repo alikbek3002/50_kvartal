@@ -10,6 +10,8 @@
 1. Подключитесь к БД через Railway или используйте `psql`
 2. Выполните SQL из файла `server/init.sql`
 
+> Примечание: сервер также сам выполняет `init.sql` при старте, так что вручную делать этот шаг необязательно.
+
 ### 3️⃣ Деплой бэкенда на Railway
 1. В Railway создайте новый сервис из репозитория
 2. Укажите **Root Directory**: `server`
@@ -17,6 +19,7 @@
    - `DATABASE_URL` - подключение к PostgreSQL
    - `NODE_ENV=production`
    - `PORT=3001` (Railway сам установит)
+  - `ADMIN_TOKEN` (опционально) — если задан, защищает `POST/PUT/DELETE` и `POST /api/upload` через `Authorization: Bearer <token>`
 
 ### 4️⃣ Добавьте Volume для картинок
 1. В настройках сервера → **Volumes**
