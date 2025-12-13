@@ -15,6 +15,13 @@ export const CheckoutPage = ({ items, onRemove, onClearCart }) => {
   const [submitError, setSubmitError] = useState(false)
 
   useEffect(() => {
+    // Some browsers (esp. mobile) may keep scroll position between route changes.
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0)
+    })
+  }, [])
+
+  useEffect(() => {
     if (!submitSuccess) return
 
     // После успешной отправки iOS Safari часто оставляет пользователя внизу

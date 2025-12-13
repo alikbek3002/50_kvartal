@@ -298,6 +298,83 @@ async function ensureProductUnits(client, productId) {
   await syncProductUnitsForStock(client, productId, row.rows[0].stock);
 }
 
+const SEED_PRODUCTS = [
+  { name: 'Super Viser Clamp End Jaw 2"', description: null, category: 'Грип и крепёж', brand: null, stock: 4, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Kupo KCP-636B Big Boom', description: null, category: 'Грип и крепёж', brand: 'Kupo', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Atomos NEON 17" 4 K HDR монитор / рекордер', description: null, category: 'Мониторы и контроль', brand: 'Atomos', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Набор ламп Aputure Accent B7C 8-Light Kit', description: null, category: 'Освещение', brand: 'Aputure', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Aputure Light Storm LS 600c Pro LED lamp - V-mount', description: null, category: 'Освещение', brand: 'Aputure', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Kupo CT-20M 20 inc h C-Stand (KUP-CT-20M)', description: null, category: 'Грип и крепёж', brand: 'Kupo', stock: 2, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Портативный свет Aputure MC RGB', description: null, category: 'Освещение', brand: 'Aputure', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Осветитель Aputure Storm 1200x Линза', description: null, category: 'Освещение', brand: 'Aputure', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Френеля Aputure F10 Fresnel Flashpoint', description: null, category: 'Модификаторы и текстиль', brand: 'Aputure', stock: 2, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Avenger A100', description: null, category: 'Грип и крепёж', brand: 'Avenger', stock: 2, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Штатив E- Image EG15A', description: null, category: 'Грип и крепёж', brand: null, stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'кронштейн Автогрип E-Image EI-A40', description: null, category: 'Грип и крепёж', brand: 'E-Image', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'KUPO присоска KSC-06', description: null, category: 'Грип и крепёж', brand: 'Kupo', stock: 4, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Aputure Nova P300C RGBWW LED (70% brighter than Skypanel S30-c)', description: null, category: 'Освещение', brand: 'Aputure', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Aputure amaran F22c 2 x 2\'\' RGB LED Flexible Light Mat (V-Mount),', description: null, category: 'Освещение', brand: 'Aputure', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Распорка автополе Kupo KP-S1017PD Kupole', description: null, category: 'Грип и крепёж', brand: 'Kupo', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Рама 12\'\'x12\'\' Modular Frame Manfrotto H1200M', description: null, category: 'Модификаторы и текстиль', brand: 'Manfrotto', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Avenger Двойное Полотно I920BDN 12х12\'\' (360х360см) black', description: null, category: 'Модификаторы и текстиль', brand: 'Avenger', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Avenger I920SDL Полотно для флага 12х12\'\' (360х360см)', description: null, category: 'Модификаторы и текстиль', brand: 'Avenger', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Grip Текстиль 6\'\'x6\'\' BB COTON Т 6-BB-C', description: null, category: 'Модификаторы и текстиль', brand: 'Grip Textile', stock: 2, pricePerDay: 100, imageUrl: null, isActive: true },
+];
+
+async function restoreSeedCatalog(client) {
+  let inserted = 0;
+  let updated = 0;
+
+  // Ensure schema pieces exist (safe to run multiple times)
+  await client.query(
+    `CREATE TABLE IF NOT EXISTS product_units (
+      id SERIAL PRIMARY KEY,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      unit_no INTEGER NOT NULL,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(product_id, unit_no)
+    )`
+  );
+  await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS unit_id INTEGER`);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_product_units_product_id ON product_units(product_id)`);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_bookings_unit_id ON bookings(unit_id)`);
+
+  // Restore products by name (insert if missing; update key fields if exists)
+  for (const p of SEED_PRODUCTS) {
+    const existing = await client.query(`SELECT id FROM products WHERE name = $1 ORDER BY id ASC LIMIT 1`, [p.name]);
+    if (!existing.rowCount) {
+      const created = await client.query(
+        `INSERT INTO products (name, description, category, brand, stock, price_per_day, image_url, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id`,
+        [p.name, p.description, p.category, p.brand, p.stock, p.pricePerDay, p.imageUrl, p.isActive]
+      );
+      inserted += 1;
+      await syncProductUnitsForStock(client, created.rows[0].id, p.stock);
+      continue;
+    }
+
+    const productId = existing.rows[0].id;
+    await client.query(
+      `UPDATE products
+       SET
+         category = $2,
+         brand = $3,
+         stock = $4,
+         price_per_day = $5,
+         is_active = TRUE,
+         updated_at = NOW()
+       WHERE id = $1`,
+      [productId, p.category, p.brand, p.stock, p.pricePerDay]
+    );
+    updated += 1;
+    await syncProductUnitsForStock(client, productId, p.stock);
+  }
+
+  return { inserted, updated };
+}
+
 function coalesceItemsByPeriod(items) {
   const map = new Map();
   for (const it of items) {
@@ -393,6 +470,27 @@ app.get('/api/images/:id', requireDbReady, async (req, res) => {
   } catch (error) {
     console.error('Ошибка отдачи картинки:', error);
     return res.status(500).json({ error: 'Ошибка при отдаче картинки' });
+  }
+});
+
+// Admin: восстановить первоначальные товары (seed) и синхронизировать единицы по stock
+app.post('/api/admin/catalog/restore', requireAdmin, requireDbReady, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await restoreSeedCatalog(client);
+    await client.query('COMMIT');
+    return res.json({ success: true, ...result });
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // ignore
+    }
+    console.error('Ошибка восстановления каталога:', error);
+    return res.status(500).json({ error: 'Ошибка восстановления каталога' });
+  } finally {
+    client.release();
   }
 });
 

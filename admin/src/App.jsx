@@ -122,6 +122,19 @@ export default function App() {
     }
   }
 
+  const restoreCatalog = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      await apiFetch('/api/admin/catalog/restore', { token, method: 'POST' })
+      await loadProducts(token)
+    } catch (e) {
+      setError(e.message || 'Ошибка восстановления каталога')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!token) return
     loadProducts(token)
@@ -456,6 +469,9 @@ export default function App() {
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button className="button ghost" type="button" onClick={() => loadProducts(token)} disabled={loading}>
                     Обновить
+                  </button>
+                  <button className="button ghost" type="button" onClick={restoreCatalog} disabled={loading}>
+                    Восстановить товары
                   </button>
                   <button className="button primary" type="button" onClick={startCreate} disabled={loading}>
                     Добавить товар
