@@ -70,18 +70,16 @@ function getProductImage(item) {
   return 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80'
 }
 
-function toDatetimeLocalValue(value) {
-  if (!value) return ''
-  const date = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-
-  const pad = (n) => String(n).padStart(2, '0')
-  const yyyy = date.getFullYear()
-  const mm = pad(date.getMonth() + 1)
-  const dd = pad(date.getDate())
-  const hh = pad(date.getHours())
-  const min = pad(date.getMinutes())
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`
+function formatDateTimeRu(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 export default function App() {
@@ -99,12 +97,17 @@ export default function App() {
   const isEditing = useMemo(() => Boolean(form.id), [form.id])
 
   const [bookingProduct, setBookingProduct] = useState(null)
-  const [bookingStart, setBookingStart] = useState('')
-  const [bookingEnd, setBookingEnd] = useState('')
+  const [bookingDateFrom, setBookingDateFrom] = useState('')
+  const [bookingTimeFrom, setBookingTimeFrom] = useState('09:00')
+  const [bookingDateTo, setBookingDateTo] = useState('')
+  const [bookingTimeTo, setBookingTimeTo] = useState('21:00')
+  const [bookingQuantity, setBookingQuantity] = useState(1)
   const [bookingError, setBookingError] = useState('')
   const [bookingSuccess, setBookingSuccess] = useState('')
   const [bookingList, setBookingList] = useState([])
   const [bookingListLoading, setBookingListLoading] = useState(false)
+  const [unitStatuses, setUnitStatuses] = useState([])
+  const [unitStatusesLoading, setUnitStatusesLoading] = useState(false)
 
   const loadProducts = async (activeToken) => {
     setLoading(true)
@@ -190,34 +193,44 @@ export default function App() {
     setBookingError('')
     setBookingSuccess('')
     setBookingProduct(p)
-    setBookingStart('')
-    setBookingEnd('')
+    setBookingDateFrom('')
+    setBookingTimeFrom('09:00')
+    setBookingDateTo('')
+    setBookingTimeTo('21:00')
+    setBookingQuantity(1)
     setBookingList([])
+    setUnitStatuses([])
     if (p?.id) {
       loadBookings(p.id)
+      loadUnitStatuses(p.id)
     }
   }
 
   const closeBooking = () => {
     setBookingProduct(null)
-    setBookingStart('')
-    setBookingEnd('')
+    setBookingDateFrom('')
+    setBookingTimeFrom('09:00')
+    setBookingDateTo('')
+    setBookingTimeTo('21:00')
+    setBookingQuantity(1)
     setBookingError('')
     setBookingSuccess('')
     setBookingList([])
     setBookingListLoading(false)
+    setUnitStatuses([])
+    setUnitStatusesLoading(false)
   }
 
-  const formatDateTime = (value) => {
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return String(value)
-    return date.toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+  const getToday = () => {
+    const now = new Date()
+    return now.toISOString().split('T')[0]
+  }
+
+  const buildLocalDateTime = (dateStr, timeStr) => {
+    if (!dateStr || !timeStr) return null
+    const value = new Date(`${dateStr}T${timeStr}:00`)
+    if (Number.isNaN(value.getTime())) return null
+    return value
   }
 
   const loadBookings = async (productId) => {
@@ -233,6 +246,19 @@ export default function App() {
     }
   }
 
+  const loadUnitStatuses = async (productId) => {
+    setUnitStatusesLoading(true)
+    try {
+      const data = await apiFetch(`/api/admin/product-units?productId=${encodeURIComponent(productId)}`, { token })
+      setUnitStatuses(Array.isArray(data) ? data : [])
+    } catch (e) {
+      setBookingError(e.message || 'Ошибка загрузки единиц товара')
+      setUnitStatuses([])
+    } finally {
+      setUnitStatusesLoading(false)
+    }
+  }
+
   const removeBooking = async (bookingId) => {
     if (!bookingId) return
     setLoading(true)
@@ -244,7 +270,9 @@ export default function App() {
       setBookingSuccess('Бронь удалена')
       if (bookingProduct?.id) {
         await loadBookings(bookingProduct.id)
+        await loadUnitStatuses(bookingProduct.id)
       }
+      await loadProducts(token)
     } catch (e) {
       setBookingError(e.message || 'Ошибка удаления брони')
     } finally {
@@ -261,17 +289,16 @@ export default function App() {
     setLoading(true)
 
     try {
-      if (!bookingStart || !bookingEnd) {
-        throw new Error('Укажите период: с какого по какое (дата и время)')
+      if (!bookingDateFrom || !bookingDateTo) {
+        throw new Error('Укажите даты: с какого по какое')
       }
-
-      const start = new Date(bookingStart)
-      const end = new Date(bookingEnd)
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      const start = buildLocalDateTime(bookingDateFrom, bookingTimeFrom)
+      const end = buildLocalDateTime(bookingDateTo, bookingTimeTo)
+      if (!start || !end) {
         throw new Error('Некорректная дата/время')
       }
       if (end.getTime() <= start.getTime()) {
-        throw new Error('Дата/время окончания должна быть позже начала')
+        throw new Error('Окончание должно быть позже начала')
       }
 
       await apiFetch('/api/admin/bookings', {
@@ -281,13 +308,16 @@ export default function App() {
           productId: bookingProduct.id,
           startAt: start.toISOString(),
           endAt: end.toISOString(),
+          quantity: bookingQuantity,
         },
       })
 
       setBookingSuccess('Бронь создана')
       if (bookingProduct?.id) {
         await loadBookings(bookingProduct.id)
+        await loadUnitStatuses(bookingProduct.id)
       }
+      await loadProducts(token)
       // оставим модалку открытой, чтобы менеджер видел успех
     } catch (e2) {
       setBookingError(e2.message || 'Ошибка создания брони')
@@ -442,6 +472,14 @@ export default function App() {
                         <span className="badge badge--ghost">{p.category || 'Без категории'}</span>
                         <span className="badge badge--ghost">Склад: {p.stock ?? 0}</span>
                         <span className="badge badge--ghost">{p.isActive ? 'Активен' : 'Скрыт'}</span>
+                        {Number(p.stock ?? 0) > 0 && (
+                          <span className="badge badge--ghost">
+                            Свободно сейчас: {Math.max(0, Number(p.availableNow ?? 0))} / {Math.max(0, Number(p.totalUnits ?? p.stock ?? 0))}
+                          </span>
+                        )}
+                        {Number(p.stock ?? 0) > 0 && Number(p.availableNow ?? 0) <= 0 && p.nextAvailableAt && (
+                          <span className="badge badge--ghost">Свободно с {formatDateTimeRu(p.nextAvailableAt)}</span>
+                        )}
                       </div>
                       <h3>{p.name}</h3>
                       <p className="product__price">{p.pricePerDay ?? 100} сом/сутки</p>
@@ -574,24 +612,53 @@ export default function App() {
 
               <form onSubmit={submitBooking} className="checkout-page__form">
                 <div className="form-group">
-                  <label>С какого (дата и время)</label>
+                  <label>Количество (шт.)</label>
                   <input
-                    type="datetime-local"
-                    value={bookingStart}
-                    onChange={(e) => setBookingStart(e.target.value)}
-                    placeholder={toDatetimeLocalValue(new Date())}
+                    type="number"
+                    min={1}
+                    max={Math.max(1, Number(bookingProduct?.totalUnits ?? bookingProduct?.stock ?? 1))}
+                    value={bookingQuantity}
+                    onChange={(e) => setBookingQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
                     required
                   />
                 </div>
 
                 <div className="form-group">
-                  <label>По какое (дата и время)</label>
+                  <label>С какого (дата)</label>
                   <input
-                    type="datetime-local"
-                    value={bookingEnd}
-                    onChange={(e) => setBookingEnd(e.target.value)}
+                    type="date"
+                    value={bookingDateFrom}
+                    min={getToday()}
+                    onChange={(e) => {
+                      const next = e.target.value
+                      setBookingDateFrom(next)
+                      if (bookingDateTo && next && bookingDateTo < next) {
+                        setBookingDateTo(next)
+                      }
+                    }}
                     required
                   />
+                </div>
+
+                <div className="form-group">
+                  <label>Время начала</label>
+                  <input type="time" value={bookingTimeFrom} onChange={(e) => setBookingTimeFrom(e.target.value)} required />
+                </div>
+
+                <div className="form-group">
+                  <label>По какое (дата)</label>
+                  <input
+                    type="date"
+                    value={bookingDateTo}
+                    min={bookingDateFrom || getToday()}
+                    onChange={(e) => setBookingDateTo(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Время окончания</label>
+                  <input type="time" value={bookingTimeTo} onChange={(e) => setBookingTimeTo(e.target.value)} required />
                 </div>
 
                 {bookingError && <div className="error-message">⚠️ {bookingError}</div>}
@@ -608,6 +675,24 @@ export default function App() {
               </form>
 
               <div className="cart-page" style={{ padding: 12 }}>
+                <strong>Единицы товара</strong>
+                <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+                  {unitStatusesLoading && <div style={{ opacity: 0.8 }}>Загрузка...</div>}
+                  {!unitStatusesLoading && unitStatuses.length === 0 && <div style={{ opacity: 0.8 }}>Нет единиц (проверь stock)</div>}
+                  {!unitStatusesLoading && unitStatuses.map((u) => (
+                    <div key={u.unitId} style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'grid', gap: 2 }}>
+                        <div style={{ fontWeight: 600 }}>Штука #{u.unitNo}</div>
+                        <div style={{ opacity: 0.9 }}>
+                          {u.busyUntil ? `Занято до ${formatDateTimeRu(u.busyUntil)}` : 'Свободно'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="cart-page" style={{ padding: 12 }}>
                 <strong>Текущие брони</strong>
                 <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
                   {bookingListLoading && <div style={{ opacity: 0.8 }}>Загрузка...</div>}
@@ -615,8 +700,8 @@ export default function App() {
                   {!bookingListLoading && bookingList.map((b) => (
                     <div key={b.id} style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ display: 'grid', gap: 2 }}>
-                        <div style={{ fontWeight: 600 }}>#{b.id}</div>
-                        <div style={{ opacity: 0.9 }}>{formatDateTime(b.startAt)} — {formatDateTime(b.endAt)}</div>
+                        <div style={{ fontWeight: 600 }}>#{b.id}{b.unitNo ? ` · штука #${b.unitNo}` : ''}</div>
+                        <div style={{ opacity: 0.9 }}>{formatDateTimeRu(b.startAt)} — {formatDateTimeRu(b.endAt)}</div>
                       </div>
                       <button className="button ghost danger" type="button" onClick={() => removeBooking(b.id)} disabled={loading}>
                         Убрать бронь

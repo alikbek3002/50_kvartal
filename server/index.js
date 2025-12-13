@@ -231,16 +231,35 @@ app.get('/api/admin/products', requireAdmin, async (req, res) => {
         p.is_active AS "isActive",
         p.created_at AS "createdAt",
         p.updated_at AS "updatedAt",
-        (
-          SELECT b.end_at
-          FROM bookings b
-          WHERE b.product_id = p.id
-            AND b.start_at <= NOW()
-            AND b.end_at > NOW()
-          ORDER BY b.end_at DESC
-          LIMIT 1
-        ) AS "bookedUntil"
+        COALESCE(s.total_units, 0) AS "totalUnits",
+        COALESCE(s.busy_units_now, 0) AS "busyUnitsNow",
+        GREATEST(0, COALESCE(s.total_units, 0) - COALESCE(s.busy_units_now, 0)) AS "availableNow",
+        s.next_available_at AS "nextAvailableAt"
       FROM products p
+      LEFT JOIN LATERAL (
+        SELECT
+          (
+            SELECT COUNT(*)
+            FROM product_units u
+            WHERE u.product_id = p.id AND u.is_active = TRUE
+          ) AS total_units,
+          (
+            SELECT COUNT(DISTINCT b.unit_id)
+            FROM bookings b
+            JOIN product_units u ON u.id = b.unit_id AND u.is_active = TRUE
+            WHERE b.product_id = p.id
+              AND b.start_at <= NOW()
+              AND b.end_at > NOW()
+          ) AS busy_units_now,
+          (
+            SELECT MIN(b.end_at)
+            FROM bookings b
+            JOIN product_units u ON u.id = b.unit_id AND u.is_active = TRUE
+            WHERE b.product_id = p.id
+              AND b.start_at <= NOW()
+              AND b.end_at > NOW()
+          ) AS next_available_at
+      ) s ON TRUE
       ORDER BY p.created_at DESC`
     );
 
@@ -250,6 +269,104 @@ app.get('/api/admin/products', requireAdmin, async (req, res) => {
     res.status(500).json({ error: 'Ошибка при получении товаров' });
   }
 });
+
+async function syncProductUnitsForStock(client, productId, stock) {
+  const normalizedStock = Number.isFinite(Number(stock)) ? Math.max(0, Math.floor(Number(stock))) : 0;
+
+  if (normalizedStock > 0) {
+    await client.query(
+      `INSERT INTO product_units (product_id, unit_no, is_active)
+       SELECT $1, gs, TRUE
+       FROM generate_series(1, $2) gs
+       ON CONFLICT (product_id, unit_no)
+       DO UPDATE SET is_active = EXCLUDED.is_active`,
+      [productId, normalizedStock]
+    );
+  }
+
+  await client.query(
+    `UPDATE product_units
+     SET is_active = (unit_no <= $2)
+     WHERE product_id = $1`,
+    [productId, normalizedStock]
+  );
+}
+
+async function ensureProductUnits(client, productId) {
+  const row = await client.query(`SELECT stock FROM products WHERE id = $1`, [productId]);
+  if (!row.rowCount) return;
+  await syncProductUnitsForStock(client, productId, row.rows[0].stock);
+}
+
+function coalesceItemsByPeriod(items) {
+  const map = new Map();
+  for (const it of items) {
+    const key = `${it.productId}|${it.startAt}|${it.endAt}`;
+    const prev = map.get(key);
+    if (!prev) {
+      map.set(key, { ...it });
+    } else {
+      prev.quantity += it.quantity;
+    }
+  }
+  return Array.from(map.values());
+}
+
+async function findFreeUnitIdsForPeriod(client, productId, startAtIso, endAtIso, { lock = false } = {}) {
+  const result = await client.query(
+    `SELECT u.id
+     FROM product_units u
+     WHERE u.product_id = $1
+       AND u.is_active = TRUE
+       AND NOT EXISTS (
+         SELECT 1
+         FROM bookings b
+         WHERE b.product_id = $1
+           AND (b.unit_id = u.id OR b.unit_id IS NULL)
+           AND NOT ($3 <= b.start_at OR $2 >= b.end_at)
+       )
+     ORDER BY u.unit_no ASC
+     ${lock ? 'FOR UPDATE' : ''}`,
+    [productId, startAtIso, endAtIso]
+  );
+  return result.rows.map((r) => r.id);
+}
+
+async function getActiveUnitsCount(client, productId) {
+  const result = await client.query(
+    `SELECT COUNT(*)::int AS count
+     FROM product_units
+     WHERE product_id = $1 AND is_active = TRUE`,
+    [productId]
+  );
+  return result.rows?.[0]?.count ?? 0;
+}
+
+async function checkCapacity(client, items) {
+  for (const it of items) {
+    const total = await getActiveUnitsCount(client, it.productId);
+    if (total <= 0) {
+      return { ok: false, productId: it.productId, available: 0, total: 0 };
+    }
+    const freeUnitIds = await findFreeUnitIdsForPeriod(client, it.productId, it.startAt, it.endAt);
+    if (freeUnitIds.length < it.quantity) {
+      return { ok: false, productId: it.productId, available: freeUnitIds.length, total };
+    }
+  }
+  return { ok: true };
+}
+
+async function allocateUnitIdsForBooking(client, { productId, startAt, endAt, quantity }) {
+  await ensureProductUnits(client, productId);
+  const total = await getActiveUnitsCount(client, productId);
+  if (total <= 0) return { ok: false, available: 0, total: 0, unitIds: [] };
+
+  const freeUnitIds = await findFreeUnitIdsForPeriod(client, productId, startAt, endAt, { lock: true });
+  if (freeUnitIds.length < quantity) {
+    return { ok: false, available: freeUnitIds.length, total, unitIds: [] };
+  }
+  return { ok: true, available: freeUnitIds.length, total, unitIds: freeUnitIds.slice(0, quantity) };
+}
 
 // Раздача статических файлов
 app.use('/uploads', express.static(uploadsDir));
@@ -324,8 +441,9 @@ app.post('/api/upload', requireAdmin, uploadImageMiddleware, async (req, res) =>
 
 // API для добавления товара
 app.post('/api/products', requireAdmin, async (req, res) => {
+  const client = pool ? await pool.connect() : null;
   try {
-    if (!pool) {
+    if (!pool || !client) {
       return res.status(503).json({ error: 'DB is not configured (DATABASE_URL is missing)' });
     }
     if (!dbReady) {
@@ -348,17 +466,28 @@ app.post('/api/products', requireAdmin, async (req, res) => {
     const resolvedPricePerDay = price_per_day ?? pricePerDay ?? price ?? 100;
     const resolvedStock = stock ?? 0;
     
-    const result = await pool.query(
+    await client.query('BEGIN');
+    const result = await client.query(
       `INSERT INTO products (name, description, category, brand, stock, image_url, price_per_day)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [name, description ?? null, category ?? null, brand ?? null, resolvedStock, resolvedImageUrl, resolvedPricePerDay]
     );
+
+    await syncProductUnitsForStock(client, result.rows[0].id, resolvedStock);
+    await client.query('COMMIT');
     
     res.json({ success: true, product: result.rows[0] });
   } catch (error) {
+    try {
+      await client?.query('ROLLBACK');
+    } catch {
+      // ignore
+    }
     console.error('Ошибка создания товара:', error);
     res.status(500).json({ error: 'Ошибка при создании товара' });
+  } finally {
+    client?.release();
   }
 });
 
@@ -383,16 +512,35 @@ app.get('/api/products', async (req, res) => {
         p.price_per_day AS "pricePerDay",
         p.created_at AS "createdAt",
         p.updated_at AS "updatedAt",
-        (
-          SELECT b.end_at
-          FROM bookings b
-          WHERE b.product_id = p.id
-            AND b.start_at <= NOW()
-            AND b.end_at > NOW()
-          ORDER BY b.end_at DESC
-          LIMIT 1
-        ) AS "bookedUntil"
+        COALESCE(s.total_units, 0) AS "totalUnits",
+        COALESCE(s.busy_units_now, 0) AS "busyUnitsNow",
+        GREATEST(0, COALESCE(s.total_units, 0) - COALESCE(s.busy_units_now, 0)) AS "availableNow",
+        s.next_available_at AS "nextAvailableAt"
       FROM products p
+      LEFT JOIN LATERAL (
+        SELECT
+          (
+            SELECT COUNT(*)
+            FROM product_units u
+            WHERE u.product_id = p.id AND u.is_active = TRUE
+          ) AS total_units,
+          (
+            SELECT COUNT(DISTINCT b.unit_id)
+            FROM bookings b
+            JOIN product_units u ON u.id = b.unit_id AND u.is_active = TRUE
+            WHERE b.product_id = p.id
+              AND b.start_at <= NOW()
+              AND b.end_at > NOW()
+          ) AS busy_units_now,
+          (
+            SELECT MIN(b.end_at)
+            FROM bookings b
+            JOIN product_units u ON u.id = b.unit_id AND u.is_active = TRUE
+            WHERE b.product_id = p.id
+              AND b.start_at <= NOW()
+              AND b.end_at > NOW()
+          ) AS next_available_at
+      ) s ON TRUE
       WHERE p.is_active = TRUE
       ORDER BY p.created_at DESC`
     );
@@ -407,10 +555,373 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
+function requireTelegramConfig() {
+  const token = String(process.env.TELEGRAM_BOT_TOKEN || '').trim();
+  const chatId = String(process.env.TELEGRAM_CHAT_ID || '').trim();
+  if (!token || !chatId) {
+    const missing = [!token ? 'TELEGRAM_BOT_TOKEN' : null, !chatId ? 'TELEGRAM_CHAT_ID' : null].filter(Boolean).join(', ');
+    const err = new Error(`Telegram is not configured (${missing} missing)`);
+    err.code = 'TELEGRAM_NOT_CONFIGURED';
+    throw err;
+  }
+  return { token, chatId };
+}
+
+async function telegramApi(token, method, payload) {
+  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => null);
+  if (!data || !data.ok) {
+    const desc = data?.description ? String(data.description) : `HTTP ${response.status}`;
+    throw new Error(`Telegram API error: ${desc}`);
+  }
+  return data.result;
+}
+
+function formatDateTimeRu(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+// NOTE: old "any overlap blocks" logic replaced by capacity-based checks (stock can be > 1)
+
+// Public: создать заказ -> отправить в Telegram с кнопками Accept/Decline
+app.post('/api/orders', requireDbReady, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { token, chatId } = requireTelegramConfig();
+
+    const { customer, items } = req.body || {};
+    const customerName = String(customer?.name || '').trim();
+    const customerPhone = String(customer?.phone || '').trim();
+    const customerAddress = String(customer?.address || '').trim();
+
+    if (!customerName || !customerPhone || !customerAddress) {
+      return res.status(400).json({ error: 'Invalid customer data' });
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Items are required' });
+    }
+
+    const normalizedItemsRaw = items.map((it) => {
+      const productId = Number(it?.productId);
+      const quantity = Number.isFinite(Number(it?.quantity)) ? Math.max(1, Number(it.quantity)) : 1;
+      const start = new Date(it?.startAt);
+      const end = new Date(it?.endAt);
+      if (!Number.isFinite(productId) || productId <= 0) throw new Error('Invalid productId');
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) throw new Error('Invalid startAt/endAt');
+      if (end.getTime() <= start.getTime()) throw new Error('endAt must be after startAt');
+      return { productId, quantity, startAt: start.toISOString(), endAt: end.toISOString() };
+    });
+
+    const normalizedItems = coalesceItemsByPeriod(normalizedItemsRaw);
+
+    await client.query('BEGIN');
+
+    // Проверка доступности по количеству (чтобы не слать менеджеру заведомо невозможный заказ)
+    for (const it of normalizedItems) {
+      await ensureProductUnits(client, it.productId);
+    }
+    const capacityCheck = await checkCapacity(client, normalizedItems);
+    if (!capacityCheck.ok) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        error: 'Некоторые товары уже заняты на этот период',
+        productId: capacityCheck.productId,
+        available: capacityCheck.available,
+        total: capacityCheck.total,
+      });
+    }
+
+    const orderInserted = await client.query(
+      `INSERT INTO orders (customer_name, customer_phone, customer_address, status)
+       VALUES ($1, $2, $3, 'pending')
+       RETURNING id`,
+      [customerName, customerPhone, customerAddress]
+    );
+    const orderId = orderInserted.rows[0].id;
+
+    for (const it of normalizedItems) {
+      await client.query(
+        `INSERT INTO order_items (order_id, product_id, start_at, end_at, quantity)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [orderId, it.productId, it.startAt, it.endAt, it.quantity]
+      );
+    }
+
+    // Подтянем имена товаров для сообщения
+    const itemsWithNames = await client.query(
+      `SELECT
+        oi.product_id AS "productId",
+        oi.start_at AS "startAt",
+        oi.end_at AS "endAt",
+        oi.quantity AS "quantity",
+        p.name AS "name",
+        p.category AS "category"
+      FROM order_items oi
+      JOIN products p ON p.id = oi.product_id
+      WHERE oi.order_id = $1
+      ORDER BY oi.id ASC`,
+      [orderId]
+    );
+
+    const itemsText = itemsWithNames.rows
+      .map((row) => {
+        const period = `${formatDateTimeRu(row.startAt)} — ${formatDateTimeRu(row.endAt)}`;
+        const qty = row.quantity && row.quantity > 1 ? ` × ${row.quantity}` : '';
+        return `  • ${row.name}${qty} (${row.category || '—'})\n    📅 ${period}`;
+      })
+      .join('\n\n');
+
+    const message = [
+      `🎬 <b>НОВЫЙ ЗАКАЗ - 50 КВАРТАЛ</b>`,
+      ``,
+      `🆔 <b>Order #${orderId}</b>`,
+      `👤 <b>Клиент:</b> ${customerName}`,
+      `📱 <b>Телефон:</b> ${customerPhone}`,
+      `📍 <b>Адрес:</b> ${customerAddress}`,
+      ``,
+      `📦 <b>Оборудование:</b>`,
+      itemsText || '—',
+      ``,
+      `<b>Статус:</b> ⏳ ожидание`,
+    ].join('\n');
+
+    const tgResult = await telegramApi(token, 'sendMessage', {
+      chat_id: chatId,
+      text: message,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '✅ Accept', callback_data: `accept:${orderId}` },
+            { text: '❌ Decline', callback_data: `decline:${orderId}` },
+          ],
+        ],
+      },
+    });
+
+    await client.query(
+      `UPDATE orders
+       SET telegram_chat_id = $1, telegram_message_id = $2, updated_at = NOW()
+       WHERE id = $3`,
+      [String(tgResult.chat?.id ?? chatId), String(tgResult.message_id ?? ''), orderId]
+    );
+
+    await client.query('COMMIT');
+    return res.json({ success: true, orderId });
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // ignore
+    }
+    console.error('Ошибка создания заказа:', error);
+    if (error?.code === 'TELEGRAM_NOT_CONFIGURED') {
+      return res.status(500).json({ error: error.message });
+    }
+    if (String(error?.message || '').includes('Invalid')) {
+      return res.status(400).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'Ошибка при создании заказа' });
+  } finally {
+    client.release();
+  }
+});
+
+// Telegram webhook: обработка нажатий Accept/Decline
+app.post('/api/telegram/webhook', requireDbReady, async (req, res) => {
+  try {
+    const secret = String(process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
+    if (secret) {
+      const headerSecret = String(req.get('x-telegram-bot-api-secret-token') || '').trim();
+      if (headerSecret !== secret) {
+        return res.status(401).json({ ok: false });
+      }
+    }
+
+    const { token } = requireTelegramConfig();
+    const update = req.body || {};
+    const cb = update.callback_query;
+    if (!cb) return res.json({ ok: true });
+
+    const callbackId = cb.id;
+    const data = String(cb.data || '');
+    const message = cb.message;
+
+    const [action, orderIdRaw] = data.split(':');
+    const orderId = Number(orderIdRaw);
+    if (!['accept', 'decline'].includes(action) || !Number.isFinite(orderId) || orderId <= 0) {
+      await telegramApi(token, 'answerCallbackQuery', {
+        callback_query_id: callbackId,
+        text: 'Некорректная команда',
+        show_alert: false,
+      });
+      return res.json({ ok: true });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const orderRow = await client.query(
+        `SELECT id, status, customer_name AS "customerName", customer_phone AS "customerPhone", customer_address AS "customerAddress"
+         FROM orders
+         WHERE id = $1
+         FOR UPDATE`,
+        [orderId]
+      );
+
+      if (!orderRow.rowCount) {
+        await client.query('ROLLBACK');
+        await telegramApi(token, 'answerCallbackQuery', {
+          callback_query_id: callbackId,
+          text: 'Заказ не найден',
+          show_alert: true,
+        });
+        return res.json({ ok: true });
+      }
+
+      const currentStatus = String(orderRow.rows[0].status || 'pending');
+      if (currentStatus !== 'pending') {
+        await client.query('ROLLBACK');
+        await telegramApi(token, 'answerCallbackQuery', {
+          callback_query_id: callbackId,
+          text: `Заказ уже обработан: ${currentStatus}`,
+          show_alert: false,
+        });
+        return res.json({ ok: true });
+      }
+
+      if (action === 'decline') {
+        await client.query(`UPDATE orders SET status = 'declined', updated_at = NOW() WHERE id = $1`, [orderId]);
+        await client.query('COMMIT');
+
+        await telegramApi(token, 'answerCallbackQuery', {
+          callback_query_id: callbackId,
+          text: 'Отклонено',
+          show_alert: false,
+        });
+
+        if (message?.chat?.id && message?.message_id) {
+          await telegramApi(token, 'editMessageReplyMarkup', {
+            chat_id: message.chat.id,
+            message_id: message.message_id,
+            reply_markup: { inline_keyboard: [] },
+          });
+          await telegramApi(token, 'editMessageText', {
+            chat_id: message.chat.id,
+            message_id: message.message_id,
+            text: `${message.text}\n\n<b>Статус:</b> ❌ отклонено`,
+            parse_mode: 'HTML',
+          });
+        }
+
+        return res.json({ ok: true });
+      }
+
+      // accept
+      const orderItems = await client.query(
+        `SELECT product_id AS "productId", start_at AS "startAt", end_at AS "endAt", quantity AS "quantity"
+         FROM order_items
+         WHERE order_id = $1
+         ORDER BY id ASC`,
+        [orderId]
+      );
+
+      const normalizedItemsRaw = orderItems.rows.map((r) => ({
+        productId: Number(r.productId),
+        startAt: new Date(r.startAt).toISOString(),
+        endAt: new Date(r.endAt).toISOString(),
+        quantity: Number.isFinite(Number(r.quantity)) ? Math.max(1, Number(r.quantity)) : 1,
+      }));
+
+      const normalizedItems = coalesceItemsByPeriod(normalizedItemsRaw);
+
+      // Аллокация unit'ов и создание броней (учитываем количество)
+      for (const it of normalizedItems) {
+        const allocation = await allocateUnitIdsForBooking(client, it);
+        if (!allocation.ok) {
+          await client.query('ROLLBACK');
+          await telegramApi(token, 'answerCallbackQuery', {
+            callback_query_id: callbackId,
+            text: 'Нельзя принять: недостаточно свободных единиц на выбранный период',
+            show_alert: true,
+          });
+          return res.json({ ok: true });
+        }
+
+        for (const unitId of allocation.unitIds) {
+          await client.query(
+            `INSERT INTO bookings (product_id, unit_id, start_at, end_at)
+             VALUES ($1, $2, $3, $4)`,
+            [it.productId, unitId, it.startAt, it.endAt]
+          );
+        }
+      }
+
+      await client.query(`UPDATE orders SET status = 'accepted', updated_at = NOW() WHERE id = $1`, [orderId]);
+      await client.query('COMMIT');
+
+      await telegramApi(token, 'answerCallbackQuery', {
+        callback_query_id: callbackId,
+        text: 'Принято, бронь создана',
+        show_alert: false,
+      });
+
+      if (message?.chat?.id && message?.message_id) {
+        await telegramApi(token, 'editMessageReplyMarkup', {
+          chat_id: message.chat.id,
+          message_id: message.message_id,
+          reply_markup: { inline_keyboard: [] },
+        });
+        await telegramApi(token, 'editMessageText', {
+          chat_id: message.chat.id,
+          message_id: message.message_id,
+          text: `${message.text}\n\n<b>Статус:</b> ✅ принято (бронь создана)`,
+          parse_mode: 'HTML',
+        });
+      }
+
+      return res.json({ ok: true });
+    } catch (err) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        // ignore
+      }
+      console.error('Telegram webhook error:', err);
+      await telegramApi(token, 'answerCallbackQuery', {
+        callback_query_id: callbackId,
+        text: 'Ошибка обработки',
+        show_alert: true,
+      }).catch(() => {});
+      return res.json({ ok: true });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Telegram webhook outer error:', error);
+    return res.json({ ok: true });
+  }
+});
+
 // API для обновления товара
 app.put('/api/products/:id', requireAdmin, async (req, res) => {
+  const client = pool ? await pool.connect() : null;
   try {
-    if (!pool) {
+    if (!pool || !client) {
       return res.status(503).json({ error: 'DB is not configured (DATABASE_URL is missing)' });
     }
     if (!dbReady) {
@@ -437,7 +948,8 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
     const resolvedStock = stock ?? 0;
     const resolvedIsActive = is_active ?? isActive;
     
-    const result = await pool.query(
+    await client.query('BEGIN');
+    const result = await client.query(
       `UPDATE products
        SET
          name = $1,
@@ -463,11 +975,24 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
         id,
       ]
     );
+
+    if (result.rowCount) {
+      await syncProductUnitsForStock(client, result.rows[0].id, resolvedStock);
+    }
+
+    await client.query('COMMIT');
     
     res.json({ success: true, product: result.rows[0] });
   } catch (error) {
+    try {
+      await client?.query('ROLLBACK');
+    } catch {
+      // ignore
+    }
     console.error('Ошибка обновления товара:', error);
     res.status(500).json({ error: 'Ошибка при обновлении товара' });
+  } finally {
+    client?.release();
   }
 });
 
@@ -491,8 +1016,9 @@ app.delete('/api/products/:id', requireAdmin, async (req, res) => {
 
 // Admin: создать бронь на товар (период start/end)
 app.post('/api/admin/bookings', requireAdmin, requireDbReady, async (req, res) => {
+  const client = await pool.connect();
   try {
-    const { productId, startAt, endAt } = req.body || {};
+    const { productId, startAt, endAt, quantity } = req.body || {};
 
     const resolvedProductId = Number(productId);
     if (!Number.isFinite(resolvedProductId) || resolvedProductId <= 0) {
@@ -513,31 +1039,85 @@ app.post('/api/admin/bookings', requireAdmin, requireDbReady, async (req, res) =
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    // Проверка пересечения периодов (для одного и того же товара)
-    const overlap = await pool.query(
-      `SELECT 1
-       FROM bookings
-       WHERE product_id = $1
-         AND NOT ($3 <= start_at OR $2 >= end_at)
-       LIMIT 1`,
-      [resolvedProductId, start.toISOString(), end.toISOString()]
-    );
+    const requestedQty = Number.isFinite(Number(quantity)) ? Math.max(1, Math.floor(Number(quantity))) : 1;
 
-    if (overlap.rowCount) {
-      return res.status(409).json({ error: 'Этот период пересекается с существующей бронью' });
+    await client.query('BEGIN');
+
+    const allocation = await allocateUnitIdsForBooking(client, {
+      productId: resolvedProductId,
+      startAt: start.toISOString(),
+      endAt: end.toISOString(),
+      quantity: requestedQty,
+    });
+
+    if (!allocation.ok) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        error: 'Недостаточно свободных единиц на этот период',
+        available: allocation.available,
+        total: allocation.total,
+      });
     }
 
-    const inserted = await pool.query(
-      `INSERT INTO bookings (product_id, start_at, end_at)
-       VALUES ($1, $2, $3)
-       RETURNING id, product_id AS "productId", start_at AS "startAt", end_at AS "endAt", created_at AS "createdAt"`,
-      [resolvedProductId, start.toISOString(), end.toISOString()]
-    );
+    const insertedRows = [];
+    for (const unitId of allocation.unitIds) {
+      const inserted = await client.query(
+        `INSERT INTO bookings (product_id, unit_id, start_at, end_at)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, product_id AS "productId", unit_id AS "unitId", start_at AS "startAt", end_at AS "endAt", created_at AS "createdAt"`,
+        [resolvedProductId, unitId, start.toISOString(), end.toISOString()]
+      );
+      insertedRows.push(inserted.rows[0]);
+    }
 
-    return res.json({ success: true, booking: inserted.rows[0] });
+    await client.query('COMMIT');
+    return res.json({ success: true, bookings: insertedRows });
   } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // ignore
+    }
     console.error('Ошибка создания брони:', error);
     return res.status(500).json({ error: 'Ошибка при создании брони' });
+  } finally {
+    client.release();
+  }
+});
+
+// Admin: статусы единиц товара (какая штука занята и до какого времени)
+app.get('/api/admin/product-units', requireAdmin, requireDbReady, async (req, res) => {
+  try {
+    const productId = Number(req.query?.productId);
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return res.status(400).json({ error: 'productId is required' });
+    }
+
+    const result = await pool.query(
+      `SELECT
+        u.id AS "unitId",
+        u.unit_no AS "unitNo",
+        u.is_active AS "isActive",
+        (
+          SELECT b.end_at
+          FROM bookings b
+          WHERE b.unit_id = u.id
+            AND b.start_at <= NOW()
+            AND b.end_at > NOW()
+          ORDER BY b.end_at ASC
+          LIMIT 1
+        ) AS "busyUntil"
+      FROM product_units u
+      WHERE u.product_id = $1
+        AND u.is_active = TRUE
+      ORDER BY u.unit_no ASC`,
+      [productId]
+    );
+
+    return res.json(result.rows);
+  } catch (error) {
+    console.error('Ошибка получения единиц товара:', error);
+    return res.status(500).json({ error: 'Ошибка при получении единиц товара' });
   }
 });
 
@@ -551,14 +1131,17 @@ app.get('/api/admin/bookings', requireAdmin, requireDbReady, async (req, res) =>
 
     const result = await pool.query(
       `SELECT
-        id,
-        product_id AS "productId",
-        start_at AS "startAt",
-        end_at AS "endAt",
-        created_at AS "createdAt"
-      FROM bookings
-      WHERE product_id = $1
-      ORDER BY start_at ASC`,
+        b.id,
+        b.product_id AS "productId",
+        b.unit_id AS "unitId",
+        u.unit_no AS "unitNo",
+        b.start_at AS "startAt",
+        b.end_at AS "endAt",
+        b.created_at AS "createdAt"
+      FROM bookings b
+      LEFT JOIN product_units u ON u.id = b.unit_id
+      WHERE b.product_id = $1
+      ORDER BY u.unit_no NULLS LAST, b.start_at ASC`,
       [productId]
     );
 

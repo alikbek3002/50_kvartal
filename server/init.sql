@@ -14,6 +14,18 @@ CREATE TABLE IF NOT EXISTS products (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Единицы товара (когда одного товара есть несколько штук)
+CREATE TABLE IF NOT EXISTS product_units (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  unit_no INTEGER NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(product_id, unit_no)
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_units_product_id ON product_units(product_id);
+
 -- Хранилище изображений в Postgres
 CREATE TABLE IF NOT EXISTS images (
   id SERIAL PRIMARY KEY,
@@ -27,6 +39,7 @@ CREATE TABLE IF NOT EXISTS images (
 CREATE TABLE IF NOT EXISTS bookings (
   id SERIAL PRIMARY KEY,
   product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  unit_id INTEGER,
   start_at TIMESTAMPTZ NOT NULL,
   end_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -36,7 +49,85 @@ CREATE INDEX IF NOT EXISTS idx_bookings_product_id ON bookings(product_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_start_at ON bookings(start_at DESC);
 CREATE INDEX IF NOT EXISTS idx_bookings_end_at ON bookings(end_at DESC);
 
+-- Заказы (подтверждение в Telegram)
+CREATE TABLE IF NOT EXISTS orders (
+  id SERIAL PRIMARY KEY,
+  customer_name TEXT NOT NULL,
+  customer_phone TEXT NOT NULL,
+  customer_address TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  telegram_chat_id TEXT,
+  telegram_message_id TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+
+CREATE TABLE IF NOT EXISTS order_items (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+  start_at TIMESTAMPTZ NOT NULL,
+  end_at TIMESTAMPTZ NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items(product_id);
+
 CREATE INDEX IF NOT EXISTS idx_images_created_at ON images(created_at DESC);
+
+-- Мягкие миграции: unit_id в bookings + FK
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS unit_id INTEGER;
+
+CREATE INDEX IF NOT EXISTS idx_bookings_unit_id ON bookings(unit_id);
+
+DO $$
+BEGIN
+  ALTER TABLE bookings
+    ADD CONSTRAINT bookings_unit_id_fkey
+    FOREIGN KEY (unit_id)
+    REFERENCES product_units(id)
+    ON DELETE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Мягкие миграции: product_units доп. поля
+ALTER TABLE product_units ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE product_units ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+-- Создать недостающие unit'ы на основе stock (и активировать/деактивировать по stock)
+INSERT INTO product_units (product_id, unit_no, is_active)
+SELECT p.id, gs.unit_no, TRUE
+FROM products p
+JOIN LATERAL generate_series(1, GREATEST(p.stock, 0)) AS gs(unit_no) ON TRUE
+LEFT JOIN product_units u ON u.product_id = p.id AND u.unit_no = gs.unit_no
+WHERE u.id IS NULL;
+
+UPDATE product_units u
+SET is_active = (u.unit_no <= GREATEST((SELECT p.stock FROM products p WHERE p.id = u.product_id), 0))
+WHERE TRUE;
+
+-- Если есть старые брони без unit_id — назначаем unit #1 (исторически пересечений не было)
+INSERT INTO product_units (product_id, unit_no, is_active)
+SELECT DISTINCT b.product_id, 1, TRUE
+FROM bookings b
+LEFT JOIN product_units u ON u.product_id = b.product_id AND u.unit_no = 1
+WHERE b.unit_id IS NULL AND u.id IS NULL;
+
+UPDATE bookings b
+SET unit_id = (
+  SELECT u.id
+  FROM product_units u
+  WHERE u.product_id = b.product_id
+  ORDER BY u.unit_no ASC
+  LIMIT 1
+)
+WHERE b.unit_id IS NULL;
 
 -- Мягкие миграции для уже существующих баз
 ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT;

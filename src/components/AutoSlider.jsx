@@ -57,12 +57,15 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cart
         >
           {duplicatedItems.map((item, idx) => {
             const isInCart = cartItems.some(cartItem => cartItem.item.name === item.name)
-            const bookedUntil = item?.bookedUntil
-            const isBooked = Boolean(bookedUntil) && new Date(bookedUntil).getTime() > Date.now()
+            const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
+            const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
+            const nextAvailableAt = item?.nextAvailableAt
+            const isOutOfStock = stock <= 0
+            const isAllBusyNow = !isOutOfStock && availableNow <= 0
             return (
             <article
               key={`${item.name}-${idx}`}
-              className={`product ${isMobile ? 'slider__card-mobile' : 'slider__card-marquee'} ${isInCart ? 'product--in-cart' : ''} ${isBooked ? 'product--booked' : ''}`}
+              className={`product ${isMobile ? 'slider__card-mobile' : 'slider__card-marquee'} ${isInCart ? 'product--in-cart' : ''} ${isAllBusyNow ? 'product--booked' : ''}`}
               onClick={() => onSelectItem(item)}
               role="button"
               tabIndex={0}
@@ -71,11 +74,22 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cart
               <div className="product__thumb">
                 <img src={getProductImage(item)} alt={item.name} loading="lazy" />
                 {isInCart && <div className="product__in-cart-badge">В корзине</div>}
-                {isBooked && <div className="product__booked-badge">Забронировано до {formatBookedUntil(bookedUntil)}</div>}
+                {(isOutOfStock || isAllBusyNow) && (
+                  <div className="product__booked-badge">
+                    {isOutOfStock
+                      ? 'Нет в наличии'
+                      : nextAvailableAt
+                        ? `Свободно с ${formatBookedUntil(nextAvailableAt)}`
+                        : 'Сейчас занято'}
+                  </div>
+                )}
               </div>
               <div className="product__meta">
                 <span className="badge">{formatBrand(item.brand)}</span>
                 <span className="badge badge--ghost">{item.category}</span>
+                {!isOutOfStock && (
+                  <span className="badge badge--ghost">Свободно: {Math.max(0, availableNow)} из {stock}</span>
+                )}
               </div>
               <h3>{item.name}</h3>
               <p className="product__price">{item.pricePerDay || 100} сом/сутки</p>
@@ -83,10 +97,10 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cart
                 <button
                   className="button primary"
                   type="button"
-                  disabled={isBooked}
+                  disabled={isOutOfStock}
                   onClick={(event) => {
                     event.stopPropagation()
-                    if (isBooked) return
+                    if (isOutOfStock) return
                     onQuickRent(item)
                   }}
                 >
@@ -95,10 +109,10 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cart
                 <button
                   className="button ghost"
                   type="button"
-                  disabled={isBooked}
+                  disabled={isOutOfStock}
                   onClick={(event) => {
                     event.stopPropagation()
-                    if (isBooked) return
+                    if (isOutOfStock) return
                     onAddToCart(item)
                   }}
                 >

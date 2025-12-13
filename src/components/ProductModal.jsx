@@ -62,8 +62,11 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
   }, [item])
 
   if (!item) return null
-  const bookedUntil = item?.bookedUntil
-  const isBooked = Boolean(bookedUntil) && new Date(bookedUntil).getTime() > Date.now()
+  const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
+  const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
+  const nextAvailableAt = item?.nextAvailableAt
+  const isOutOfStock = stock <= 0
+  const isAllBusyNow = !isOutOfStock && availableNow <= 0
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
@@ -81,7 +84,13 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
           <h3>{item.name}</h3>
           <div className="modal-status">
             <span className="modal-stock-note">
-              {isBooked ? `Забронировано до ${formatBookedUntil(bookedUntil)}` : 'Позиция доступна к бронированию'}
+              {isOutOfStock
+                ? 'Нет в наличии'
+                : isAllBusyNow
+                  ? nextAvailableAt
+                    ? `Сейчас занято · свободно с ${formatBookedUntil(nextAvailableAt)}`
+                    : 'Сейчас занято'
+                  : `Доступно сейчас: ${Math.max(0, availableNow)} из ${stock}`}
             </span>
             <span className="modal-price">{item.pricePerDay || 100} сом/сутки</span>
           </div>
@@ -104,10 +113,10 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
             </div>
           </dl>
           <div className="modal-actions">
-            <button className="button primary modal-cta" type="button" onClick={() => onQuickRent(item)} disabled={isBooked}>
+            <button className="button primary modal-cta" type="button" onClick={() => onQuickRent(item)} disabled={isOutOfStock}>
               Быстрая аренда
             </button>
-            <button className="button ghost modal-cta" type="button" onClick={() => onAddToCart(item)} disabled={isBooked}>
+            <button className="button ghost modal-cta" type="button" onClick={() => onAddToCart(item)} disabled={isOutOfStock}>
               Добавить в корзину
             </button>
           </div>

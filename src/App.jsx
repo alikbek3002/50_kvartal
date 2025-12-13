@@ -105,12 +105,19 @@ function App() {
   }
 
   const openDateTimePicker = (item, mode) => {
-    const bookedUntil = item?.bookedUntil
-    const isBooked = Boolean(bookedUntil) && new Date(bookedUntil).getTime() > Date.now()
-    if (isBooked) {
-      showToast(`Товар забронирован до ${formatBookedUntil(bookedUntil)}`)
+    const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
+    const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
+    const nextAvailableAt = item?.nextAvailableAt
+
+    if (stock <= 0) {
+      showToast('Нет в наличии')
       return
     }
+
+    if (availableNow <= 0 && nextAvailableAt) {
+      showToast(`Сейчас занято. Ближайшее освобождение: ${formatBookedUntil(nextAvailableAt)}`)
+    }
+
     setDateTimePickerState({ isOpen: true, item, mode })
   }
 
