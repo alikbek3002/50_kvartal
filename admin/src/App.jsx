@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { API_URL } from './config'
 
 const STORAGE_TOKEN_KEY = 'adminToken'
@@ -46,7 +46,7 @@ const emptyForm = {
   name: '',
   category: '',
   brand: '',
-  stock: 0,
+  stock: 1,
   pricePerDay: 100,
   imageUrl: '',
   description: '',
@@ -95,6 +95,8 @@ export default function App() {
 
   const [form, setForm] = useState(emptyForm)
   const isEditing = useMemo(() => Boolean(form.id), [form.id])
+  const [productEditorOpen, setProductEditorOpen] = useState(false)
+  const scrollLockRef = useRef({ locked: false, previousOverflow: '' })
 
   const [bookingProduct, setBookingProduct] = useState(null)
   const [bookingDateFrom, setBookingDateFrom] = useState('')
@@ -108,6 +110,35 @@ export default function App() {
   const [bookingListLoading, setBookingListLoading] = useState(false)
   const [unitStatuses, setUnitStatuses] = useState([])
   const [unitStatusesLoading, setUnitStatusesLoading] = useState(false)
+
+  const shouldLockScroll = Boolean(bookingProduct) || productEditorOpen
+
+  useEffect(() => {
+    const body = document?.body
+    if (!body) return
+
+    if (shouldLockScroll && !scrollLockRef.current.locked) {
+      scrollLockRef.current.previousOverflow = body.style.overflow
+      body.style.overflow = 'hidden'
+      scrollLockRef.current.locked = true
+      return
+    }
+
+    if (!shouldLockScroll && scrollLockRef.current.locked) {
+      body.style.overflow = scrollLockRef.current.previousOverflow || ''
+      scrollLockRef.current.previousOverflow = ''
+      scrollLockRef.current.locked = false
+    }
+
+    return () => {
+      // On unmount: best-effort restore.
+      if (scrollLockRef.current.locked) {
+        body.style.overflow = scrollLockRef.current.previousOverflow || ''
+        scrollLockRef.current.previousOverflow = ''
+        scrollLockRef.current.locked = false
+      }
+    }
+  }, [shouldLockScroll])
 
   const loadProducts = async (activeToken) => {
     setLoading(true)
@@ -171,6 +202,8 @@ export default function App() {
 
   const startCreate = () => {
     setForm(emptyForm)
+    setError('')
+    setProductEditorOpen(true)
   }
 
   const startEdit = (p) => {
@@ -185,6 +218,14 @@ export default function App() {
       description: p.description || '',
       isActive: p.isActive ?? true,
     })
+    setError('')
+    setProductEditorOpen(true)
+  }
+
+  const closeProductEditor = () => {
+    setProductEditorOpen(false)
+    setForm(emptyForm)
+    setError('')
   }
 
   const removeProduct = async (id, name) => {
@@ -377,6 +418,7 @@ export default function App() {
       }
 
       setForm(emptyForm)
+      setProductEditorOpen(false)
       await loadProducts(token)
     } catch (e) {
       setError(e.message || 'Ошибка сохранения')
@@ -534,99 +576,112 @@ export default function App() {
                 )}
               </div>
             </div>
-
-            <div className="checkout-page__form-wrapper">
-              <form onSubmit={saveProduct} className="checkout-page__form">
-                <h3>{isEditing ? 'Редактирование товара' : 'Новый товар'}</h3>
-
-                <div className="form-group">
-                  <label>Название</label>
-                  <input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} required />
-                </div>
-
-                <div className="form-group">
-                  <label>Категория</label>
-                  <input value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))} />
-                </div>
-
-                <div className="form-group">
-                  <label>Бренд</label>
-                  <input value={form.brand} onChange={(e) => setForm((prev) => ({ ...prev, brand: e.target.value }))} />
-                </div>
-
-                <div className="form-group">
-                  <label>Остаток (stock)</label>
-                  <input
-                    type="number"
-                    value={form.stock}
-                    onChange={(e) => setForm((prev) => ({ ...prev, stock: Number(e.target.value) }))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Цена за сутки</label>
-                  <input
-                    type="number"
-                    value={form.pricePerDay}
-                    onChange={(e) => setForm((prev) => ({ ...prev, pricePerDay: Number(e.target.value) }))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Ссылка на картинку (imageUrl)</label>
-                  <input value={form.imageUrl} onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))} />
-                </div>
-
-                <div className="form-group">
-                  <label>Загрузить картинку</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      try {
-                        setLoading(true)
-                        const url = await uploadImage(file)
-                        setForm((prev) => ({ ...prev, imageUrl: url }))
-                      } catch (err) {
-                        setError(err.message || 'Ошибка загрузки картинки')
-                      } finally {
-                        setLoading(false)
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Описание</label>
-                  <input value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} />
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={Boolean(form.isActive)}
-                      onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
-                    />{' '}
-                    Активен (показывать на сайте)
-                  </label>
-                </div>
-
-                <div className="checkout-page__actions">
-                  <button className="button ghost" type="button" onClick={() => setForm(emptyForm)} disabled={loading}>
-                    Очистить
-                  </button>
-                  <button className="button primary" type="submit" disabled={loading}>
-                    {loading ? 'Сохранение...' : 'Сохранить'}
-                  </button>
-                </div>
-              </form>
-            </div>
           </div>
         </div>
       </main>
+
+      {productEditorOpen && (
+        <div className="modal-overlay" onClick={closeProductEditor}>
+          <div className="modal-card modal-card--admin" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+            <button className="modal-close" onClick={closeProductEditor} aria-label="Закрыть" type="button">
+              ×
+            </button>
+
+            <form onSubmit={saveProduct} className="checkout-page__form">
+              <h3>{isEditing ? 'Редактирование товара' : 'Новый товар'}</h3>
+
+              {error && <div className="error-message">⚠️ {error}</div>}
+
+              <div className="form-group">
+                <label>Название</label>
+                <input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} required />
+              </div>
+
+              <div className="form-group">
+                <label>Категория</label>
+                <input value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))} />
+              </div>
+
+              <div className="form-group">
+                <label>Бренд</label>
+                <input value={form.brand} onChange={(e) => setForm((prev) => ({ ...prev, brand: e.target.value }))} />
+              </div>
+
+              <div className="form-group">
+                <label>Остаток (stock)</label>
+                <input
+                  type="number"
+                  value={form.stock}
+                  onChange={(e) => setForm((prev) => ({ ...prev, stock: Number(e.target.value) }))}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Цена за сутки</label>
+                <input
+                  type="number"
+                  value={form.pricePerDay}
+                  onChange={(e) => setForm((prev) => ({ ...prev, pricePerDay: Number(e.target.value) }))}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Ссылка на картинку (imageUrl)</label>
+                <input value={form.imageUrl} onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))} />
+              </div>
+
+              <div className="form-group">
+                <label>Загрузить картинку</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    try {
+                      setLoading(true)
+                      const url = await uploadImage(file)
+                      setForm((prev) => ({ ...prev, imageUrl: url }))
+                    } catch (err) {
+                      setError(err.message || 'Ошибка загрузки картинки')
+                    } finally {
+                      setLoading(false)
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Описание</label>
+                <input value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} />
+              </div>
+
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(form.isActive)}
+                    onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
+                  />{' '}
+                  Активен (показывать на сайте)
+                </label>
+              </div>
+
+              <div className="checkout-page__actions">
+                <button className="button ghost" type="button" onClick={closeProductEditor} disabled={loading}>
+                  Отмена
+                </button>
+                <button className="button ghost" type="button" onClick={() => setForm(emptyForm)} disabled={loading}>
+                  Очистить
+                </button>
+                <button className="button primary" type="submit" disabled={loading}>
+                  {loading ? 'Сохранение...' : 'Сохранить'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {bookingProduct && (
         <div className="modal-overlay" onClick={closeBooking}>

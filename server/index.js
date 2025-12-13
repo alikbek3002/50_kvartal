@@ -299,26 +299,26 @@ async function ensureProductUnits(client, productId) {
 }
 
 const SEED_PRODUCTS = [
-  { name: 'Super Viser Clamp End Jaw 2"', description: null, category: 'Грип и крепёж', brand: null, stock: 4, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Super Viser Clamp End Jaw 2"', description: null, category: 'Грип и крепёж', brand: null, stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'Kupo KCP-636B Big Boom', description: null, category: 'Грип и крепёж', brand: 'Kupo', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'Atomos NEON 17" 4 K HDR монитор / рекордер', description: null, category: 'Мониторы и контроль', brand: 'Atomos', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'Набор ламп Aputure Accent B7C 8-Light Kit', description: null, category: 'Освещение', brand: 'Aputure', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'Aputure Light Storm LS 600c Pro LED lamp - V-mount', description: null, category: 'Освещение', brand: 'Aputure', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
-  { name: 'Kupo CT-20M 20 inc h C-Stand (KUP-CT-20M)', description: null, category: 'Грип и крепёж', brand: 'Kupo', stock: 2, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Kupo CT-20M 20 inc h C-Stand (KUP-CT-20M)', description: null, category: 'Грип и крепёж', brand: 'Kupo', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'Портативный свет Aputure MC RGB', description: null, category: 'Освещение', brand: 'Aputure', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'Осветитель Aputure Storm 1200x Линза', description: null, category: 'Освещение', brand: 'Aputure', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
-  { name: 'Френеля Aputure F10 Fresnel Flashpoint', description: null, category: 'Модификаторы и текстиль', brand: 'Aputure', stock: 2, pricePerDay: 100, imageUrl: null, isActive: true },
-  { name: 'Avenger A100', description: null, category: 'Грип и крепёж', brand: 'Avenger', stock: 2, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Френеля Aputure F10 Fresnel Flashpoint', description: null, category: 'Модификаторы и текстиль', brand: 'Aputure', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Avenger A100', description: null, category: 'Грип и крепёж', brand: 'Avenger', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'Штатив E- Image EG15A', description: null, category: 'Грип и крепёж', brand: null, stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'кронштейн Автогрип E-Image EI-A40', description: null, category: 'Грип и крепёж', brand: 'E-Image', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
-  { name: 'KUPO присоска KSC-06', description: null, category: 'Грип и крепёж', brand: 'Kupo', stock: 4, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'KUPO присоска KSC-06', description: null, category: 'Грип и крепёж', brand: 'Kupo', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'Aputure Nova P300C RGBWW LED (70% brighter than Skypanel S30-c)', description: null, category: 'Освещение', brand: 'Aputure', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'Aputure amaran F22c 2 x 2\'\' RGB LED Flexible Light Mat (V-Mount),', description: null, category: 'Освещение', brand: 'Aputure', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'Распорка автополе Kupo KP-S1017PD Kupole', description: null, category: 'Грип и крепёж', brand: 'Kupo', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'Рама 12\'\'x12\'\' Modular Frame Manfrotto H1200M', description: null, category: 'Модификаторы и текстиль', brand: 'Manfrotto', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'Avenger Двойное Полотно I920BDN 12х12\'\' (360х360см) black', description: null, category: 'Модификаторы и текстиль', brand: 'Avenger', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
   { name: 'Avenger I920SDL Полотно для флага 12х12\'\' (360х360см)', description: null, category: 'Модификаторы и текстиль', brand: 'Avenger', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
-  { name: 'Grip Текстиль 6\'\'x6\'\' BB COTON Т 6-BB-C', description: null, category: 'Модификаторы и текстиль', brand: 'Grip Textile', stock: 2, pricePerDay: 100, imageUrl: null, isActive: true },
+  { name: 'Grip Текстиль 6\'\'x6\'\' BB COTON Т 6-BB-C', description: null, category: 'Модификаторы и текстиль', brand: 'Grip Textile', stock: 1, pricePerDay: 100, imageUrl: null, isActive: true },
 ];
 
 async function restoreSeedCatalog(client) {
