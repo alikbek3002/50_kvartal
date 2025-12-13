@@ -3908,8 +3908,6 @@ body {
 /* ============================================
    Catalog Search & Filter
    ============================================ */
-  z-index: 10;
-
 .catalog__search-wrapper {
   margin-bottom: 32px;
 }
@@ -3918,6 +3916,7 @@ body {
   position: relative;
   max-width: 600px;
   margin: 0 auto;
+  z-index: 10;
 }
 
 .catalog__search-input {

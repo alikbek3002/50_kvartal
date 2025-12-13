@@ -7,6 +7,8 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
   const [searchQuery, setSearchQuery] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
 
+  const toSearchString = (value) => String(value ?? '').toLowerCase()
+
   const filteredItems = useMemo(() => {
     let result = items
 
@@ -15,12 +17,13 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
     }
 
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(item =>
-        item.name.toLowerCase().includes(query) ||
-        item.category.toLowerCase().includes(query) ||
-        item.brand.toLowerCase().includes(query)
-      )
+      const query = toSearchString(searchQuery.trim())
+      result = result.filter((item) => {
+        const name = toSearchString(item?.name)
+        const category = toSearchString(item?.category)
+        const brand = toSearchString(item?.brand)
+        return name.includes(query) || category.includes(query) || brand.includes(query)
+      })
     }
 
     return result
@@ -29,10 +32,10 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
   const suggestions = useMemo(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) return []
     
-    const query = searchQuery.toLowerCase()
-    const matches = items.filter(item =>
-      item.name.toLowerCase().includes(query)
-    ).slice(0, 5)
+    const query = toSearchString(searchQuery.trim())
+    const matches = items
+      .filter((item) => toSearchString(item?.name).includes(query))
+      .slice(0, 5)
     
     return matches
   }, [items, searchQuery])
