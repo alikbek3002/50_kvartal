@@ -52,6 +52,7 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                 type="text"
                 placeholder="Поиск оборудования..."
                 value={searchQuery}
+                autoComplete="off"
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
                   setShowSuggestions(true)
