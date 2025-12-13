@@ -53,6 +53,37 @@ const emptyForm = {
   isActive: true,
 }
 
+function formatBrand(brand) {
+  return brand && brand !== '—' ? brand : 'бренд уточняется'
+}
+
+function getProductImage(item) {
+  const directUrl = item?.imageUrl
+  if (typeof directUrl === 'string' && directUrl.trim()) {
+    const value = directUrl.trim()
+    // If backend stores relative URLs (recommended), prefix with API_URL when present.
+    if (API_URL && (value.startsWith('/api/') || value.startsWith('/uploads/'))) {
+      return `${API_URL}${value}`
+    }
+    return value
+  }
+  return 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80'
+}
+
+function toDatetimeLocalValue(value) {
+  if (!value) return ''
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const pad = (n) => String(n).padStart(2, '0')
+  const yyyy = date.getFullYear()
+  const mm = pad(date.getMonth() + 1)
+  const dd = pad(date.getDate())
+  const hh = pad(date.getHours())
+  const min = pad(date.getMinutes())
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`
+}
+
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem(STORAGE_TOKEN_KEY) || '')
   const [authError, setAuthError] = useState('')
@@ -66,6 +97,12 @@ export default function App() {
 
   const [form, setForm] = useState(emptyForm)
   const isEditing = useMemo(() => Boolean(form.id), [form.id])
+
+  const [bookingProduct, setBookingProduct] = useState(null)
+  const [bookingStart, setBookingStart] = useState('')
+  const [bookingEnd, setBookingEnd] = useState('')
+  const [bookingError, setBookingError] = useState('')
+  const [bookingSuccess, setBookingSuccess] = useState('')
 
   const loadProducts = async (activeToken) => {
     setLoading(true)
@@ -142,6 +179,63 @@ export default function App() {
       if (form.id === id) setForm(emptyForm)
     } catch (e) {
       setError(e.message || 'Ошибка удаления')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const openBooking = (p) => {
+    setBookingError('')
+    setBookingSuccess('')
+    setBookingProduct(p)
+    setBookingStart('')
+    setBookingEnd('')
+  }
+
+  const closeBooking = () => {
+    setBookingProduct(null)
+    setBookingStart('')
+    setBookingEnd('')
+    setBookingError('')
+    setBookingSuccess('')
+  }
+
+  const submitBooking = async (e) => {
+    e.preventDefault()
+    if (!bookingProduct?.id) return
+
+    setBookingError('')
+    setBookingSuccess('')
+    setLoading(true)
+
+    try {
+      if (!bookingStart || !bookingEnd) {
+        throw new Error('Укажите период: с какого по какое (дата и время)')
+      }
+
+      const start = new Date(bookingStart)
+      const end = new Date(bookingEnd)
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        throw new Error('Некорректная дата/время')
+      }
+      if (end.getTime() <= start.getTime()) {
+        throw new Error('Дата/время окончания должна быть позже начала')
+      }
+
+      await apiFetch('/api/admin/bookings', {
+        token,
+        method: 'POST',
+        body: {
+          productId: bookingProduct.id,
+          startAt: start.toISOString(),
+          endAt: end.toISOString(),
+        },
+      })
+
+      setBookingSuccess('Бронь создана')
+      // оставим модалку открытой, чтобы менеджер видел успех
+    } catch (e2) {
+      setBookingError(e2.message || 'Ошибка создания брони')
     } finally {
       setLoading(false)
     }
@@ -281,48 +375,39 @@ export default function App() {
 
               {error && <div className="error-message" style={{ marginTop: 12 }}>⚠️ {error}</div>}
 
-              <div style={{ marginTop: 12, overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: 'left', padding: 8 }}>Название</th>
-                      <th style={{ textAlign: 'left', padding: 8 }}>Категория</th>
-                      <th style={{ textAlign: 'left', padding: 8 }}>Бренд</th>
-                      <th style={{ textAlign: 'right', padding: 8 }}>Склад</th>
-                      <th style={{ textAlign: 'right', padding: 8 }}>Цена/сутки</th>
-                      <th style={{ textAlign: 'center', padding: 8 }}>Активен</th>
-                      <th style={{ textAlign: 'right', padding: 8 }}>Действия</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products.map((p) => (
-                      <tr key={p.id} style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                        <td style={{ padding: 8 }}>{p.name}</td>
-                        <td style={{ padding: 8 }}>{p.category || '—'}</td>
-                        <td style={{ padding: 8 }}>{p.brand || '—'}</td>
-                        <td style={{ padding: 8, textAlign: 'right' }}>{p.stock ?? 0}</td>
-                        <td style={{ padding: 8, textAlign: 'right' }}>{p.pricePerDay ?? 100}</td>
-                        <td style={{ padding: 8, textAlign: 'center' }}>{p.isActive ? 'Да' : 'Нет'}</td>
-                        <td style={{ padding: 8, textAlign: 'right' }}>
-                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                            <button className="button ghost" type="button" onClick={() => startEdit(p)}>
-                              Редактировать
-                            </button>
-                            <button className="button ghost danger" type="button" onClick={() => removeProduct(p.id)}>
-                              Удалить
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+              <div style={{ marginTop: 12 }}>
+                <div className="catalog__grid">
+                  {products.map((p) => (
+                    <article key={p.id} className="product product--admin">
+                      <div className="product__thumb">
+                        <img src={getProductImage(p)} alt={p.name} loading="lazy" />
+                      </div>
+                      <div className="product__meta">
+                        <span className="badge">{formatBrand(p.brand)}</span>
+                        <span className="badge badge--ghost">{p.category || 'Без категории'}</span>
+                        <span className="badge badge--ghost">Склад: {p.stock ?? 0}</span>
+                        <span className="badge badge--ghost">{p.isActive ? 'Активен' : 'Скрыт'}</span>
+                      </div>
+                      <h3>{p.name}</h3>
+                      <p className="product__price">{p.pricePerDay ?? 100} сом/сутки</p>
+                      <div className="product__actions product__actions--admin">
+                        <button className="button ghost" type="button" onClick={() => startEdit(p)} disabled={loading}>
+                          Редактировать
+                        </button>
+                        <button className="button ghost danger" type="button" onClick={() => removeProduct(p.id)} disabled={loading}>
+                          Удалить
+                        </button>
+                        <button className="button primary" type="button" onClick={() => openBooking(p)} disabled={loading}>
+                          Бронь
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
 
-                    {!loading && products.length === 0 && (
-                      <tr>
-                        <td colSpan={7} style={{ padding: 12, opacity: 0.8 }}>Товаров пока нет</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                {!loading && products.length === 0 && (
+                  <div style={{ padding: 12, opacity: 0.8 }}>Товаров пока нет</div>
+                )}
               </div>
             </div>
 
@@ -418,6 +503,58 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {bookingProduct && (
+        <div className="modal-overlay" onClick={closeBooking}>
+          <div className="modal-card modal-card--admin" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+            <button className="modal-close" onClick={closeBooking} aria-label="Закрыть" type="button">
+              ×
+            </button>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              <div>
+                <p className="eyebrow">Бронь</p>
+                <h2 style={{ margin: 0, fontSize: '1.2rem' }}>{bookingProduct.name}</h2>
+              </div>
+
+              <form onSubmit={submitBooking} className="checkout-page__form">
+                <div className="form-group">
+                  <label>С какого (дата и время)</label>
+                  <input
+                    type="datetime-local"
+                    value={bookingStart}
+                    onChange={(e) => setBookingStart(e.target.value)}
+                    placeholder={toDatetimeLocalValue(new Date())}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>По какое (дата и время)</label>
+                  <input
+                    type="datetime-local"
+                    value={bookingEnd}
+                    onChange={(e) => setBookingEnd(e.target.value)}
+                    required
+                  />
+                </div>
+
+                {bookingError && <div className="error-message">⚠️ {bookingError}</div>}
+                {bookingSuccess && <div className="error-message" style={{ borderColor: 'rgba(0, 200, 120, 0.35)', background: 'rgba(0, 200, 120, 0.08)' }}>✓ {bookingSuccess}</div>}
+
+                <div className="checkout-page__actions">
+                  <button className="button ghost" type="button" onClick={closeBooking} disabled={loading}>
+                    Отмена
+                  </button>
+                  <button className="button primary" type="submit" disabled={loading}>
+                    {loading ? 'Сохранение...' : 'Забронировать'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

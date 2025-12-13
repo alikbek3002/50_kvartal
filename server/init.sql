@@ -23,6 +23,19 @@ CREATE TABLE IF NOT EXISTS images (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Бронирования (период аренды/резерва по товару)
+CREATE TABLE IF NOT EXISTS bookings (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  start_at TIMESTAMPTZ NOT NULL,
+  end_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_bookings_product_id ON bookings(product_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_start_at ON bookings(start_at DESC);
+CREATE INDEX IF NOT EXISTS idx_bookings_end_at ON bookings(end_at DESC);
+
 CREATE INDEX IF NOT EXISTS idx_images_created_at ON images(created_at DESC);
 
 -- Мягкие миграции для уже существующих баз

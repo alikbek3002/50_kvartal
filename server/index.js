@@ -471,6 +471,58 @@ app.delete('/api/products/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// Admin: создать бронь на товар (период start/end)
+app.post('/api/admin/bookings', requireAdmin, requireDbReady, async (req, res) => {
+  try {
+    const { productId, startAt, endAt } = req.body || {};
+
+    const resolvedProductId = Number(productId);
+    if (!Number.isFinite(resolvedProductId) || resolvedProductId <= 0) {
+      return res.status(400).json({ error: 'productId is required' });
+    }
+
+    const start = new Date(startAt);
+    const end = new Date(endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Invalid startAt/endAt' });
+    }
+    if (end.getTime() <= start.getTime()) {
+      return res.status(400).json({ error: 'endAt must be after startAt' });
+    }
+
+    const productExists = await pool.query('SELECT 1 FROM products WHERE id = $1', [resolvedProductId]);
+    if (!productExists.rowCount) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Проверка пересечения периодов (для одного и того же товара)
+    const overlap = await pool.query(
+      `SELECT 1
+       FROM bookings
+       WHERE product_id = $1
+         AND NOT ($3 <= start_at OR $2 >= end_at)
+       LIMIT 1`,
+      [resolvedProductId, start.toISOString(), end.toISOString()]
+    );
+
+    if (overlap.rowCount) {
+      return res.status(409).json({ error: 'Этот период пересекается с существующей бронью' });
+    }
+
+    const inserted = await pool.query(
+      `INSERT INTO bookings (product_id, start_at, end_at)
+       VALUES ($1, $2, $3)
+       RETURNING id, product_id AS "productId", start_at AS "startAt", end_at AS "endAt", created_at AS "createdAt"`,
+      [resolvedProductId, start.toISOString(), end.toISOString()]
+    );
+
+    return res.json({ success: true, booking: inserted.rows[0] });
+  } catch (error) {
+    console.error('Ошибка создания брони:', error);
+    return res.status(500).json({ error: 'Ошибка при создании брони' });
+  }
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({
