@@ -64,7 +64,7 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                 <div className="catalog__suggestions">
                   {suggestions.map((item) => (
                     <div
-                      key={item.name}
+                      key={item.id ?? item.name}
                       className="catalog__suggestion"
                       onClick={() => {
                         onSelectItem(item)
@@ -104,7 +104,7 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
               const isInCart = cartItems.some(cartItem => cartItem.item.name === item.name)
               return (
               <article
-                key={item.name}
+                key={item.id ?? item.name}
                 className={`product ${isInCart ? 'product--in-cart' : ''}`}
                 onClick={() => onSelectItem(item)}
                 role="button"

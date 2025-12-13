@@ -3,6 +3,7 @@ import { Route, Routes, useNavigate } from 'react-router-dom'
 import './App.css'
 import inventory from './data/inventory.json'
 import { plural } from './utils/helpers'
+import { API_URL } from './config'
 import { Header } from './components/Header'
 import { Footer } from './components/Footer'
 import { ProductModal } from './components/ProductModal'
@@ -21,20 +22,52 @@ function App() {
   const [editingCartItem, setEditingCartItem] = useState(null)
   const [toastState, setToastState] = useState({ isVisible: false, message: '' })
 
+  const [products, setProducts] = useState([])
+  const [productsLoading, setProductsLoading] = useState(true)
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadProducts() {
+      try {
+        const response = await fetch(`${API_URL}/api/products`)
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const data = await response.json()
+        if (isMounted && Array.isArray(data)) {
+          setProducts(data)
+        }
+      } catch (error) {
+        console.error('Failed to load products from API:', error)
+      } finally {
+        if (isMounted) setProductsLoading(false)
+      }
+    }
+
+    loadProducts()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const catalogItems = useMemo(() => {
+    if (!productsLoading && products.length > 0) return products
+    return inventory
+  }, [products, productsLoading])
+
   const categoryTotals = useMemo(() => {
-    return inventory.reduce((acc, item) => {
+    return catalogItems.reduce((acc, item) => {
       acc[item.category] = (acc[item.category] || 0) + 1
       return acc
     }, {})
-  }, [])
+  }, [catalogItems])
 
   const heroStats = useMemo(() => {
     const categoriesCount = Object.keys(categoryTotals).length
     return [
-      { value: inventory.length, label: plural(inventory.length, ['позиция', 'позиции', 'позиций']) },
+      { value: catalogItems.length, label: plural(catalogItems.length, ['позиция', 'позиции', 'позиций']) },
       { value: categoriesCount, label: plural(categoriesCount, ['категория', 'категории', 'категорий']) },
     ]
-  }, [categoryTotals])
+  }, [categoryTotals, catalogItems.length])
 
   const categoryChips = useMemo(() => Object.entries(categoryTotals).sort(([, a], [, b]) => b - a), [categoryTotals])
 
@@ -140,7 +173,7 @@ function App() {
           element={
             <HomePage
               heroStats={heroStats}
-              items={inventory}
+              items={catalogItems}
               onSelectItem={setSelectedItem}
               onAddToCart={(item) => openDateTimePicker(item, 'cart')}
               onQuickRent={(item) => openDateTimePicker(item, 'quick')}
@@ -152,7 +185,7 @@ function App() {
           path="/catalog"
           element={
             <CatalogPage
-              items={inventory}
+              items={catalogItems}
               onSelectItem={setSelectedItem}
               onAddToCart={(item) => openDateTimePicker(item, 'cart')}
               onQuickRent={(item) => openDateTimePicker(item, 'quick')}

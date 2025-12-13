@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import express from 'express';
 import multer from 'multer';
 import cors from 'cors';
@@ -6,6 +5,14 @@ import pg from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import crypto from 'crypto';
+
+// Optional .env support for local dev
+try {
+  await import('dotenv/config');
+} catch {
+  // ok: dotenv isn't required on Railway
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -53,15 +60,59 @@ const upload = multer({
 });
 
 // Подключение к PostgreSQL
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+const hasDbConfig = Boolean((process.env.DATABASE_URL && process.env.DATABASE_URL.trim()) || process.env.PGHOST);
+const requireDb = process.env.REQUIRE_DB
+  ? String(process.env.REQUIRE_DB).toLowerCase() === 'true'
+  : process.env.NODE_ENV === 'production';
+
+const pool = hasDbConfig
+  ? new pg.Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    })
+  : null;
+
+let dbReady = false;
+let dbInitError = null;
 
 async function initDb() {
+  if (!pool) {
+    throw new Error('DATABASE_URL is not set (DB is not configured)');
+  }
   const initSqlPath = path.join(__dirname, 'init.sql');
   const sql = fs.readFileSync(initSqlPath, 'utf8');
   await pool.query(sql);
+}
+
+async function startDb() {
+  if (!hasDbConfig) {
+    dbInitError = new Error('DATABASE_URL is not set');
+    console.warn('DB disabled: DATABASE_URL is not set. Set it in env or server/.env. Products/admin API will return 503 until configured.');
+    return;
+  }
+
+  try {
+    await initDb();
+    dbReady = true;
+    dbInitError = null;
+    console.log('DB ready');
+  } catch (error) {
+    dbInitError = error;
+    console.error('DB init failed:', error);
+    if (requireDb) {
+      process.exit(1);
+    }
+  }
+}
+
+function requireDbReady(req, res, next) {
+  if (!pool) {
+    return res.status(503).json({ error: 'DB is not configured (DATABASE_URL is missing)' });
+  }
+  if (!dbReady) {
+    return res.status(503).json({ error: 'DB is not ready yet' });
+  }
+  next();
 }
 
 function requireAdmin(req, res, next) {
@@ -76,6 +127,68 @@ function requireAdmin(req, res, next) {
 
   next();
 }
+
+function safeTimingEqual(a, b) {
+  const left = Buffer.from(String(a ?? ''), 'utf8');
+  const right = Buffer.from(String(b ?? ''), 'utf8');
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+
+    const configuredUsername = process.env.ADMIN_USERNAME;
+    const configuredPassword = process.env.ADMIN_PASSWORD;
+    const adminToken = process.env.ADMIN_TOKEN;
+
+    if (!configuredUsername || !configuredPassword || !adminToken) {
+      return res.status(500).json({ error: 'Admin auth is not configured' });
+    }
+
+    const usernameOk = safeTimingEqual(username, configuredUsername);
+    const passwordOk = safeTimingEqual(password, configuredPassword);
+
+    if (!usernameOk || !passwordOk) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    return res.json({ token: adminToken });
+  } catch (error) {
+    console.error('Admin login error:', error);
+    return res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+app.get('/api/admin/products', requireAdmin, async (req, res) => {
+  try {
+    if (!pool) {
+      return res.status(503).json({ error: 'DB is not configured (DATABASE_URL is missing)' });
+    }
+    const result = await pool.query(
+      `SELECT
+        id,
+        name,
+        description,
+        category,
+        brand,
+        stock,
+        image_url AS "imageUrl",
+        price_per_day AS "pricePerDay",
+        is_active AS "isActive",
+        created_at AS "createdAt",
+        updated_at AS "updatedAt"
+      FROM products
+      ORDER BY created_at DESC`
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Ошибка получения товаров (admin):', error);
+    res.status(500).json({ error: 'Ошибка при получении товаров' });
+  }
+});
 
 // Раздача статических файлов
 app.use('/uploads', express.static(uploadsDir));
@@ -102,6 +215,9 @@ app.post('/api/upload', requireAdmin, upload.single('image'), async (req, res) =
 // API для добавления товара
 app.post('/api/products', requireAdmin, async (req, res) => {
   try {
+    if (!pool) {
+      return res.status(503).json({ error: 'DB is not configured (DATABASE_URL is missing)' });
+    }
     const {
       name,
       description,
@@ -136,6 +252,9 @@ app.post('/api/products', requireAdmin, async (req, res) => {
 // API для получения всех товаров
 app.get('/api/products', async (req, res) => {
   try {
+    if (!pool) {
+      return res.status(503).json({ error: 'DB is not configured (DATABASE_URL is missing)' });
+    }
     const result = await pool.query(
       `SELECT
         id,
@@ -163,6 +282,9 @@ app.get('/api/products', async (req, res) => {
 // API для обновления товара
 app.put('/api/products/:id', requireAdmin, async (req, res) => {
   try {
+    if (!pool) {
+      return res.status(503).json({ error: 'DB is not configured (DATABASE_URL is missing)' });
+    }
     const { id } = req.params;
     const {
       name,
@@ -221,6 +343,9 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
 // API для удаления товара
 app.delete('/api/products/:id', requireAdmin, async (req, res) => {
   try {
+    if (!pool) {
+      return res.status(503).json({ error: 'DB is not configured (DATABASE_URL is missing)' });
+    }
     const { id } = req.params;
     await pool.query('DELETE FROM products WHERE id = $1', [id]);
     res.json({ success: true });
@@ -232,10 +357,23 @@ app.delete('/api/products/:id', requireAdmin, async (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK' });
+  res.json({
+    status: 'OK',
+    db: {
+      configured: Boolean(pool),
+      ready: dbReady,
+      requireDb,
+      error: dbInitError ? String(dbInitError.message || dbInitError) : null,
+    },
+  });
 });
 
-await initDb();
+if (requireDb) {
+  await startDb();
+} else {
+  // не блокируем запуск в dev
+  startDb();
+}
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
