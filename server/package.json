@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js"
+    "dev": "node --watch index.js",
+    "migrate:images": "node scripts/migrate-images-to-db.js"
   },
   "dependencies": {
     "express": "^4.18.2",

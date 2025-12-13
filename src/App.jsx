@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Route, Routes, useNavigate } from 'react-router-dom'
 import './App.css'
-import inventory from './data/inventory.json'
 import { plural } from './utils/helpers'
 import { API_URL } from './config'
 import { Header } from './components/Header'
@@ -24,6 +23,7 @@ function App() {
 
   const [products, setProducts] = useState([])
   const [productsLoading, setProductsLoading] = useState(true)
+  const [maintenance, setMaintenance] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -33,11 +33,15 @@ function App() {
         const response = await fetch(`${API_URL}/api/products`)
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const data = await response.json()
-        if (isMounted && Array.isArray(data)) {
-          setProducts(data)
-        }
+        if (!isMounted) return
+        setProducts(Array.isArray(data) ? data : [])
+        setMaintenance(false)
       } catch (error) {
         console.error('Failed to load products from API:', error)
+        if (isMounted) {
+          setProducts([])
+          setMaintenance(true)
+        }
       } finally {
         if (isMounted) setProductsLoading(false)
       }
@@ -50,8 +54,8 @@ function App() {
   }, [])
 
   const catalogItems = useMemo(() => {
-    if (!productsLoading && products.length > 0) return products
-    return inventory
+    if (productsLoading) return []
+    return products
   }, [products, productsLoading])
 
   const categoryTotals = useMemo(() => {
@@ -163,6 +167,21 @@ function App() {
     window.addEventListener('keydown', handleEsc)
     return () => window.removeEventListener('keydown', handleEsc)
   }, [selectedItem])
+
+  if (maintenance) {
+    return (
+      <div className="page">
+        <Header cartCount={cartCount} onCartOpen={openCart} />
+        <main className="page-content">
+          <div className="container" style={{ maxWidth: 720 }}>
+            <h1>Ведутся технические работы</h1>
+            <p className="lead">Каталог временно недоступен. Пожалуйста, попробуйте позже.</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
 
   return (
     <div className="page">

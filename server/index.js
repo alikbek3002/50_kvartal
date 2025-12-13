@@ -20,7 +20,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const IMAGE_STORAGE = String(process.env.IMAGE_STORAGE || (process.env.NODE_ENV === 'production' ? 'db' : 'fs')).toLowerCase();
+// Default to DB storage for images (override with IMAGE_STORAGE=fs if ever needed)
+const IMAGE_STORAGE = String(process.env.IMAGE_STORAGE || 'db').toLowerCase();
 
 // Railway/Reverse proxy (нужно для корректного req.protocol при HTTPS)
 app.set('trust proxy', 1);
@@ -195,6 +196,9 @@ app.get('/api/admin/products', requireAdmin, async (req, res) => {
     if (!pool) {
       return res.status(503).json({ error: 'DB is not configured (DATABASE_URL is missing)' });
     }
+    if (!dbReady) {
+      return res.status(503).json({ error: 'DB is not ready yet' });
+    }
     const result = await pool.query(
       `SELECT
         id,
@@ -296,6 +300,9 @@ app.post('/api/products', requireAdmin, async (req, res) => {
     if (!pool) {
       return res.status(503).json({ error: 'DB is not configured (DATABASE_URL is missing)' });
     }
+    if (!dbReady) {
+      return res.status(503).json({ error: 'DB is not ready yet' });
+    }
     const {
       name,
       description,
@@ -330,8 +337,11 @@ app.post('/api/products', requireAdmin, async (req, res) => {
 // API для получения всех товаров
 app.get('/api/products', async (req, res) => {
   try {
-    if (!pool) {
-      return res.status(503).json({ error: 'DB is not configured (DATABASE_URL is missing)' });
+    if (!pool || !dbReady) {
+      return res.status(503).json({
+        error: 'maintenance',
+        message: 'Ведутся технические работы',
+      });
     }
     const result = await pool.query(
       `SELECT
@@ -353,7 +363,10 @@ app.get('/api/products', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error('Ошибка получения товаров:', error);
-    res.status(500).json({ error: 'Ошибка при получении товаров' });
+    res.status(503).json({
+      error: 'maintenance',
+      message: 'Ведутся технические работы',
+    });
   }
 });
 
@@ -362,6 +375,9 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
   try {
     if (!pool) {
       return res.status(503).json({ error: 'DB is not configured (DATABASE_URL is missing)' });
+    }
+    if (!dbReady) {
+      return res.status(503).json({ error: 'DB is not ready yet' });
     }
     const { id } = req.params;
     const {
@@ -423,6 +439,9 @@ app.delete('/api/products/:id', requireAdmin, async (req, res) => {
   try {
     if (!pool) {
       return res.status(503).json({ error: 'DB is not configured (DATABASE_URL is missing)' });
+    }
+    if (!dbReady) {
+      return res.status(503).json({ error: 'DB is not ready yet' });
     }
     const { id } = req.params;
     await pool.query('DELETE FROM products WHERE id = $1', [id]);
