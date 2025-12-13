@@ -48,7 +48,7 @@ const emptyForm = {
   brand: '',
   stock: 1,
   pricePerDay: 100,
-  imageUrl: '',
+  imageUrls: [],
   description: '',
   isActive: true,
 }
@@ -58,16 +58,32 @@ function formatBrand(brand) {
 }
 
 function getProductImage(item) {
-  const directUrl = item?.imageUrl
-  if (typeof directUrl === 'string' && directUrl.trim()) {
-    const value = directUrl.trim()
-    // If backend stores relative URLs (recommended), prefix with API_URL when present.
-    if (API_URL && (value.startsWith('/api/') || value.startsWith('/uploads/'))) {
-      return `${API_URL}${value}`
+  const list = Array.isArray(item?.imageUrls) ? item.imageUrls : []
+  const primary = (list[0] || item?.imageUrl || '').trim()
+  if (primary) {
+    if (API_URL && (primary.startsWith('/api/') || primary.startsWith('/uploads/'))) {
+      return `${API_URL}${primary}`
     }
-    return value
+    return primary
   }
   return 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80'
+}
+
+function normalizeImageUrls(value) {
+  const asString = typeof value === 'string' ? value : ''
+  const urls = asString
+    .split(/[\n,]+/g)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const seen = new Set()
+  const unique = []
+  for (const u of urls) {
+    if (seen.has(u)) continue
+    seen.add(u)
+    unique.push(u)
+    if (unique.length >= 12) break
+  }
+  return unique
 }
 
 function formatDateTimeRu(value) {
@@ -207,6 +223,11 @@ export default function App() {
   }
 
   const startEdit = (p) => {
+    const resolvedImageUrls = Array.isArray(p?.imageUrls)
+      ? p.imageUrls.filter((u) => typeof u === 'string' && u.trim()).map((u) => u.trim())
+      : typeof p?.imageUrl === 'string' && p.imageUrl.trim()
+        ? [p.imageUrl.trim()]
+        : []
     setForm({
       id: p.id,
       name: p.name || '',
@@ -214,7 +235,7 @@ export default function App() {
       brand: p.brand || '',
       stock: Number.isFinite(p.stock) ? p.stock : 0,
       pricePerDay: Number.isFinite(p.pricePerDay) ? p.pricePerDay : 100,
-      imageUrl: p.imageUrl || '',
+      imageUrls: resolvedImageUrls,
       description: p.description || '',
       isActive: p.isActive ?? true,
     })
@@ -404,7 +425,7 @@ export default function App() {
         brand: form.brand.trim() || null,
         stock: Number(form.stock) || 0,
         pricePerDay: Number(form.pricePerDay) || 100,
-        imageUrl: form.imageUrl.trim() || null,
+        imageUrls: Array.isArray(form.imageUrls) ? form.imageUrls : [],
         description: form.description.trim() || null,
         isActive: Boolean(form.isActive),
       }
@@ -626,8 +647,11 @@ export default function App() {
               </div>
 
               <div className="form-group">
-                <label>Ссылка на картинку (imageUrl)</label>
-                <input value={form.imageUrl} onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))} />
+                <label>Ссылки на картинки (несколько — через перенос строки или запятую)</label>
+                <textarea
+                  value={(form.imageUrls || []).join('\n')}
+                  onChange={(e) => setForm((prev) => ({ ...prev, imageUrls: normalizeImageUrls(e.target.value) }))}
+                />
               </div>
 
               <div className="form-group">
@@ -635,13 +659,23 @@ export default function App() {
                 <input
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={async (e) => {
-                    const file = e.target.files?.[0]
-                    if (!file) return
+                    const files = Array.from(e.target.files || [])
+                    if (files.length === 0) return
                     try {
                       setLoading(true)
-                      const url = await uploadImage(file)
-                      setForm((prev) => ({ ...prev, imageUrl: url }))
+                      const uploaded = []
+                      for (const file of files) {
+                        const url = await uploadImage(file)
+                        if (url) uploaded.push(url)
+                      }
+                      if (uploaded.length) {
+                        setForm((prev) => ({
+                          ...prev,
+                          imageUrls: Array.from(new Set([...(prev.imageUrls || []), ...uploaded])).slice(0, 12),
+                        }))
+                      }
                     } catch (err) {
                       setError(err.message || 'Ошибка загрузки картинки')
                     } finally {

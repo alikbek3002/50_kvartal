@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { getProductImage } from '../utils/imageLoader'
+import { useEffect, useMemo, useState } from 'react'
+import { getProductImages } from '../utils/imageLoader'
 import { formatBrand, formatBookedUntil } from '../utils/helpers'
 
 export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
@@ -61,6 +61,13 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
     }
   }, [item])
 
+  const images = useMemo(() => getProductImages(item), [item])
+  const [imageIndex, setImageIndex] = useState(0)
+
+  useEffect(() => {
+    setImageIndex(0)
+  }, [item?.id, item?.name])
+
   if (!item) return null
   const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
   const hasAvailabilityV2 =
@@ -83,7 +90,30 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
           ×
         </button>
         <div className="modal-media">
-          <img src={getProductImage(item)} alt={item.name} />
+          <div className="modal-carousel">
+            <img src={images[Math.min(imageIndex, images.length - 1)]} alt={item.name} />
+            {images.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="modal-carousel__button modal-carousel__button--prev"
+                  onClick={() => setImageIndex((prev) => (prev - 1 + images.length) % images.length)}
+                  aria-label="Предыдущее фото"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="modal-carousel__button modal-carousel__button--next"
+                  onClick={() => setImageIndex((prev) => (prev + 1) % images.length)}
+                  aria-label="Следующее фото"
+                >
+                  ›
+                </button>
+                <div className="modal-carousel__counter">{imageIndex + 1} / {images.length}</div>
+              </>
+            )}
+          </div>
         </div>
         <div className="modal-details">
           <div className="modal-tags">

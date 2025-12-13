@@ -107,6 +107,54 @@ const pool = hasDbConfig
 let dbReady = false;
 let dbInitError = null;
 
+function normalizeImageUrls(value, fallbackSingle) {
+  const pushUrl = (list, url) => {
+    const cleaned = typeof url === 'string' ? url.trim() : '';
+    if (!cleaned) return;
+    list.push(cleaned);
+  };
+
+  const urls = [];
+  if (Array.isArray(value)) {
+    for (const v of value) pushUrl(urls, v);
+  } else if (typeof value === 'string' && value.trim()) {
+    const raw = value.trim();
+    // Try JSON first
+    if ((raw.startsWith('[') && raw.endsWith(']')) || (raw.startsWith('"') && raw.endsWith('"'))) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          for (const v of parsed) pushUrl(urls, v);
+        } else {
+          pushUrl(urls, parsed);
+        }
+      } catch {
+        // fall back to split
+        for (const v of raw.split(/[\n,]+/g)) pushUrl(urls, v);
+      }
+    } else {
+      for (const v of raw.split(/[\n,]+/g)) pushUrl(urls, v);
+    }
+  } else if (value && typeof value === 'object') {
+    // If a JSON object was passed by mistake, ignore.
+  }
+
+  if (urls.length === 0) {
+    pushUrl(urls, fallbackSingle);
+  }
+
+  // De-dup preserving order and cap to a reasonable number.
+  const seen = new Set();
+  const unique = [];
+  for (const u of urls) {
+    if (seen.has(u)) continue;
+    seen.add(u);
+    unique.push(u);
+    if (unique.length >= 12) break;
+  }
+  return unique;
+}
+
 async function initDb() {
   if (!pool) {
     throw new Error('DATABASE_URL is not set (DB is not configured)');
@@ -227,6 +275,7 @@ app.get('/api/admin/products', requireAdmin, async (req, res) => {
         p.brand,
         p.stock,
         p.image_url AS "imageUrl",
+        p.image_urls AS "imageUrls",
         p.price_per_day AS "pricePerDay",
         p.is_active AS "isActive",
         p.created_at AS "createdAt",
@@ -555,21 +604,34 @@ app.post('/api/products', requireAdmin, async (req, res) => {
       stock,
       image_url,
       imageUrl,
+      image_urls,
+      imageUrls,
       price_per_day,
       pricePerDay,
       price,
     } = req.body;
 
     const resolvedImageUrl = image_url ?? imageUrl ?? null;
+    const resolvedImageUrls = normalizeImageUrls(image_urls ?? imageUrls, resolvedImageUrl);
+    const imageUrlPrimary = resolvedImageUrls[0] ?? resolvedImageUrl ?? null;
     const resolvedPricePerDay = price_per_day ?? pricePerDay ?? price ?? 100;
     const resolvedStock = stock ?? 0;
     
     await client.query('BEGIN');
     const result = await client.query(
-      `INSERT INTO products (name, description, category, brand, stock, image_url, price_per_day)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO products (name, description, category, brand, stock, image_url, image_urls, price_per_day)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
        RETURNING *`,
-      [name, description ?? null, category ?? null, brand ?? null, resolvedStock, resolvedImageUrl, resolvedPricePerDay]
+      [
+        name,
+        description ?? null,
+        category ?? null,
+        brand ?? null,
+        resolvedStock,
+        imageUrlPrimary,
+        JSON.stringify(resolvedImageUrls),
+        resolvedPricePerDay,
+      ]
     );
 
     await syncProductUnitsForStock(client, result.rows[0].id, resolvedStock);
@@ -607,6 +669,7 @@ app.get('/api/products', async (req, res) => {
         p.brand,
         p.stock,
         p.image_url AS "imageUrl",
+        p.image_urls AS "imageUrls",
         p.price_per_day AS "pricePerDay",
         p.created_at AS "createdAt",
         p.updated_at AS "updatedAt",
@@ -1042,6 +1105,8 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
       stock,
       image_url,
       imageUrl,
+      image_urls,
+      imageUrls,
       price_per_day,
       pricePerDay,
       price,
@@ -1050,6 +1115,8 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
     } = req.body;
 
     const resolvedImageUrl = image_url ?? imageUrl ?? null;
+    const resolvedImageUrls = normalizeImageUrls(image_urls ?? imageUrls, resolvedImageUrl);
+    const imageUrlPrimary = resolvedImageUrls[0] ?? resolvedImageUrl ?? null;
     const resolvedPricePerDay = price_per_day ?? pricePerDay ?? price ?? 100;
     const resolvedStock = stock ?? 0;
     const resolvedIsActive = is_active ?? isActive;
@@ -1064,10 +1131,11 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
          brand = $4,
          stock = $5,
          image_url = $6,
-         price_per_day = $7,
-         is_active = COALESCE($8, is_active),
+         image_urls = $7::jsonb,
+         price_per_day = $8,
+         is_active = COALESCE($9, is_active),
          updated_at = NOW()
-       WHERE id = $9
+       WHERE id = $10
        RETURNING *`,
       [
         name,
@@ -1075,7 +1143,8 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
         category ?? null,
         brand ?? null,
         resolvedStock,
-        resolvedImageUrl,
+        imageUrlPrimary,
+        JSON.stringify(resolvedImageUrls),
         resolvedPricePerDay,
         resolvedIsActive,
         id,

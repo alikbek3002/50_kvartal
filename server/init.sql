@@ -9,10 +9,14 @@ CREATE TABLE IF NOT EXISTS products (
   stock INTEGER NOT NULL DEFAULT 0,
   price_per_day NUMERIC(10, 2) NOT NULL DEFAULT 100,
   image_url TEXT,
+  image_urls JSONB,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Мягкая миграция: несколько фото товара
+ALTER TABLE products ADD COLUMN IF NOT EXISTS image_urls JSONB;
 
 -- Единицы товара (когда одного товара есть несколько штук)
 CREATE TABLE IF NOT EXISTS product_units (
