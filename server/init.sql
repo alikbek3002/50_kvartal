@@ -14,6 +14,17 @@ CREATE TABLE IF NOT EXISTS products (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Хранилище изображений в Postgres
+CREATE TABLE IF NOT EXISTS images (
+  id SERIAL PRIMARY KEY,
+  filename TEXT,
+  mime_type TEXT NOT NULL,
+  data BYTEA NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_images_created_at ON images(created_at DESC);
+
 -- Мягкие миграции для уже существующих баз
 ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS category TEXT;

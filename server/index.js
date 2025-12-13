@@ -20,6 +20,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const IMAGE_STORAGE = String(process.env.IMAGE_STORAGE || (process.env.NODE_ENV === 'production' ? 'db' : 'fs')).toLowerCase();
+
 // Railway/Reverse proxy (нужно для корректного req.protocol при HTTPS)
 app.set('trust proxy', 1);
 
@@ -27,37 +29,47 @@ app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
 
-// Создаем папку для загрузок если её нет
+// Создаем папку для загрузок если её нет (нужно только для IMAGE_STORAGE=fs)
 const uploadsDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Настройка multer для загрузки файлов
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+function imageFileFilter(req, file, cb) {
+  const allowedTypes = /jpeg|jpg|png|gif|webp/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedTypes.test(file.mimetype);
+
+  if (mimetype && extname) {
+    return cb(null, true);
   }
+  cb(new Error('Только изображения разрешены!'));
+}
+
+const uploadFs = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      cb(null, uniqueSuffix + path.extname(file.originalname));
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: imageFileFilter,
 });
 
-const upload = multer({ 
-  storage,
+const uploadDb = multer({
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    
-    if (mimetype && extname) {
-      return cb(null, true);
-    }
-    cb(new Error('Только изображения разрешены!'));
-  }
+  fileFilter: imageFileFilter,
 });
+
+function uploadImageMiddleware(req, res, next) {
+  const mw = IMAGE_STORAGE === 'db' ? uploadDb.single('image') : uploadFs.single('image');
+  return mw(req, res, next);
+}
 
 // Подключение к PostgreSQL
 const hasDbConfig = Boolean((process.env.DATABASE_URL && process.env.DATABASE_URL.trim()) || process.env.PGHOST);
@@ -193,18 +205,67 @@ app.get('/api/admin/products', requireAdmin, async (req, res) => {
 // Раздача статических файлов
 app.use('/uploads', express.static(uploadsDir));
 
+// Отдача картинок из БД
+app.get('/api/images/:id', requireDbReady, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT id, mime_type, data
+       FROM images
+       WHERE id = $1`,
+      [id]
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+
+    const row = result.rows[0];
+    res.setHeader('Content-Type', row.mime_type || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return res.send(row.data);
+  } catch (error) {
+    console.error('Ошибка отдачи картинки:', error);
+    return res.status(500).json({ error: 'Ошибка при отдаче картинки' });
+  }
+});
+
 // API для загрузки изображения
-app.post('/api/upload', requireAdmin, upload.single('image'), async (req, res) => {
+app.post('/api/upload', requireAdmin, uploadImageMiddleware, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Файл не загружен' });
     }
-    
+
+    if (IMAGE_STORAGE === 'db') {
+      if (!pool || !dbReady) {
+        return res.status(503).json({ error: 'DB is not ready for image uploads' });
+      }
+
+      const originalName = req.file.originalname || null;
+      const mimeType = req.file.mimetype || 'application/octet-stream';
+      const buffer = req.file.buffer;
+      if (!buffer || !buffer.length) {
+        return res.status(400).json({ error: 'Пустой файл' });
+      }
+
+      const inserted = await pool.query(
+        `INSERT INTO images (filename, mime_type, data)
+         VALUES ($1, $2, $3)
+         RETURNING id`,
+        [originalName, mimeType, buffer]
+      );
+
+      const id = inserted.rows[0].id;
+      const imageUrl = `${req.protocol}://${req.get('host')}/api/images/${id}`;
+      return res.json({ success: true, url: imageUrl, id });
+    }
+
     const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-    res.json({ 
-      success: true, 
+    return res.json({
+      success: true,
       url: imageUrl,
-      filename: req.file.filename 
+      filename: req.file.filename,
     });
   } catch (error) {
     console.error('Ошибка загрузки:', error);
