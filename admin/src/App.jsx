@@ -19,7 +19,19 @@ async function apiFetch(path, { token, method = 'GET', headers, body } = {}) {
   })
 
   const contentType = response.headers.get('content-type') || ''
-  const data = contentType.includes('application/json') ? await response.json().catch(() => null) : await response.text().catch(() => null)
+  const data = contentType.includes('application/json')
+    ? await response.json().catch(() => null)
+    : await response.text().catch(() => null)
+
+  // Common Railway/Vite deploy pitfall: API_URL points to a static frontend service.
+  // In that case, unknown /api/* routes often return index.html with 200 OK.
+  if (response.ok && path.startsWith('/api/') && !contentType.includes('application/json')) {
+    const preview = typeof data === 'string' ? data.slice(0, 120).replace(/\s+/g, ' ').trim() : ''
+    const hint = preview.toLowerCase().includes('<!doctype html') || preview.toLowerCase().includes('<html')
+      ? 'Похоже, API_URL указывает на фронтенд (вернулся HTML), а не на бэкенд.'
+      : 'Бэкенд вернул не-JSON ответ.'
+    throw new Error(`${hint} Проверь VITE_API_URL в Railway и пересобери админку. Ответ: ${contentType || 'unknown'}`)
+  }
 
   if (!response.ok) {
     const message = typeof data === 'object' && data && 'error' in data ? data.error : `HTTP ${response.status}`
