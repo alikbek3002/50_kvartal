@@ -128,7 +128,7 @@ function requireDbReady(req, res, next) {
 }
 
 function requireAdmin(req, res, next) {
-  const adminToken = process.env.ADMIN_TOKEN;
+  const adminToken = getEffectiveAdminToken();
   if (!adminToken) return next();
 
   const header = req.get('authorization') || '';
@@ -138,6 +138,19 @@ function requireAdmin(req, res, next) {
   }
 
   next();
+}
+
+function getEffectiveAdminToken() {
+  const direct = String(process.env.ADMIN_TOKEN || '').trim();
+  if (direct) return direct;
+
+  // DX fallback: if ADMIN_USERNAME/PASSWORD are set but ADMIN_TOKEN is missing,
+  // derive a stable token from them so the admin panel can still work.
+  const username = String(process.env.ADMIN_USERNAME || '').trim();
+  const password = String(process.env.ADMIN_PASSWORD || '').trim();
+  if (!username || !password) return null;
+
+  return crypto.createHash('sha256').update(`${username}:${password}`).digest('hex');
 }
 
 function safeTimingEqual(a, b) {
@@ -153,10 +166,14 @@ app.post('/api/admin/login', async (req, res) => {
 
     const configuredUsername = process.env.ADMIN_USERNAME;
     const configuredPassword = process.env.ADMIN_PASSWORD;
-    const adminToken = process.env.ADMIN_TOKEN;
+    const adminToken = getEffectiveAdminToken();
 
-    if (!configuredUsername || !configuredPassword || !adminToken) {
-      return res.status(500).json({ error: 'Admin auth is not configured' });
+    if (!configuredUsername || !configuredPassword) {
+      return res.status(500).json({ error: 'Admin auth is not configured (ADMIN_USERNAME/ADMIN_PASSWORD missing)' });
+    }
+
+    if (!adminToken) {
+      return res.status(500).json({ error: 'Admin auth is not configured (ADMIN_TOKEN missing)' });
     }
 
     const usernameOk = safeTimingEqual(username, configuredUsername);
