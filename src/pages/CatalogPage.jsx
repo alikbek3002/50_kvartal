@@ -103,10 +103,18 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
             {filteredItems.map((item) => {
               const isInCart = cartItems.some(cartItem => cartItem.item.name === item.name)
               const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
+              const hasAvailabilityV2 =
+                item &&
+                (Object.prototype.hasOwnProperty.call(item, 'availableNow') ||
+                  Object.prototype.hasOwnProperty.call(item, 'busyUnitsNow') ||
+                  Object.prototype.hasOwnProperty.call(item, 'nextAvailableAt'))
               const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
               const nextAvailableAt = item?.nextAvailableAt
+              const bookedUntilLegacy = item?.bookedUntil
               const isOutOfStock = stock <= 0
-              const isAllBusyNow = !isOutOfStock && availableNow <= 0
+              const isAllBusyNow = hasAvailabilityV2
+                ? !isOutOfStock && availableNow <= 0
+                : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
               return (
               <article
                 key={item.id ?? item.name}
@@ -128,16 +136,20 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                     <div className="product__booked-badge">
                       {isOutOfStock
                         ? 'Нет в наличии'
-                        : nextAvailableAt
-                          ? `Свободно с ${formatBookedUntil(nextAvailableAt)}`
-                          : 'Сейчас занято'}
+                        : hasAvailabilityV2
+                          ? nextAvailableAt
+                            ? `Свободно с ${formatBookedUntil(nextAvailableAt)}`
+                            : 'Сейчас занято'
+                          : bookedUntilLegacy
+                            ? `Забронировано до ${formatBookedUntil(bookedUntilLegacy)}`
+                            : 'Забронировано'}
                     </div>
                   )}
                 </div>
                 <div className="product__meta">
                   <span className="badge">{formatBrand(item.brand)}</span>
                   <span className="badge badge--ghost">{item.category}</span>
-                  {!isOutOfStock && (
+                  {!isOutOfStock && hasAvailabilityV2 && (
                     <span className="badge badge--ghost">Свободно: {Math.max(0, availableNow)} из {stock}</span>
                   )}
                 </div>
@@ -147,10 +159,10 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                   <button
                     className="button primary"
                     type="button"
-                    disabled={isOutOfStock}
+                    disabled={isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)}
                     onClick={(event) => {
                       event.stopPropagation()
-                      if (isOutOfStock) return
+                      if (isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)) return
                       onQuickRent(item)
                     }}
                   >
@@ -159,10 +171,10 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                   <button
                     className="button ghost"
                     type="button"
-                    disabled={isOutOfStock}
+                    disabled={isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)}
                     onClick={(event) => {
                       event.stopPropagation()
-                      if (isOutOfStock) return
+                      if (isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)) return
                       onAddToCart(item)
                     }}
                   >

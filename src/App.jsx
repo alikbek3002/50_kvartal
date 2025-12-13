@@ -61,8 +61,23 @@ function App() {
     }
 
     loadProducts()
+
+    const handleFocus = () => {
+      loadProducts()
+    }
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadProducts()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
     return () => {
       isMounted = false
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [])
 
@@ -106,12 +121,25 @@ function App() {
 
   const openDateTimePicker = (item, mode) => {
     const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
+    const hasAvailabilityV2 =
+      item &&
+      (Object.prototype.hasOwnProperty.call(item, 'availableNow') ||
+        Object.prototype.hasOwnProperty.call(item, 'busyUnitsNow') ||
+        Object.prototype.hasOwnProperty.call(item, 'nextAvailableAt'))
     const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
     const nextAvailableAt = item?.nextAvailableAt
 
     if (stock <= 0) {
       showToast('Нет в наличии')
       return
+    }
+
+    if (!hasAvailabilityV2) {
+      const bookedUntil = item?.bookedUntil
+      if (bookedUntil && new Date(bookedUntil).getTime() > Date.now()) {
+        showToast(`Сейчас занято. Освободится: ${formatBookedUntil(bookedUntil)}`)
+        return
+      }
     }
 
     if (availableNow <= 0 && nextAvailableAt) {

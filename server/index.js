@@ -1116,6 +1116,13 @@ app.delete('/api/products/:id', requireAdmin, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Ошибка удаления товара:', error);
+    // Postgres FK violation (e.g. order_items -> products)
+    if (error?.code === '23503') {
+      return res.status(409).json({
+        error:
+          'Нельзя удалить товар: он уже участвует в заказах. Сделайте его неактивным (выключите "Активен"), чтобы скрыть с витрины.',
+      });
+    }
     res.status(500).json({ error: 'Ошибка при удалении товара' });
   }
 });

@@ -63,10 +63,18 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
 
   if (!item) return null
   const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
+  const hasAvailabilityV2 =
+    item &&
+    (Object.prototype.hasOwnProperty.call(item, 'availableNow') ||
+      Object.prototype.hasOwnProperty.call(item, 'busyUnitsNow') ||
+      Object.prototype.hasOwnProperty.call(item, 'nextAvailableAt'))
   const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
   const nextAvailableAt = item?.nextAvailableAt
+  const bookedUntilLegacy = item?.bookedUntil
   const isOutOfStock = stock <= 0
-  const isAllBusyNow = !isOutOfStock && availableNow <= 0
+  const isAllBusyNow = hasAvailabilityV2
+    ? !isOutOfStock && availableNow <= 0
+    : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
@@ -86,11 +94,17 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
             <span className="modal-stock-note">
               {isOutOfStock
                 ? 'Нет в наличии'
-                : isAllBusyNow
-                  ? nextAvailableAt
-                    ? `Сейчас занято · свободно с ${formatBookedUntil(nextAvailableAt)}`
-                    : 'Сейчас занято'
-                  : `Доступно сейчас: ${Math.max(0, availableNow)} из ${stock}`}
+                : hasAvailabilityV2
+                  ? isAllBusyNow
+                    ? nextAvailableAt
+                      ? `Сейчас занято · свободно с ${formatBookedUntil(nextAvailableAt)}`
+                      : 'Сейчас занято'
+                    : `Доступно сейчас: ${Math.max(0, availableNow)} из ${stock}`
+                  : isAllBusyNow
+                    ? bookedUntilLegacy
+                      ? `Забронировано до ${formatBookedUntil(bookedUntilLegacy)}`
+                      : 'Забронировано'
+                    : 'Доступно'}
             </span>
             <span className="modal-price">{item.pricePerDay || 100} сом/сутки</span>
           </div>
@@ -113,10 +127,20 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
             </div>
           </dl>
           <div className="modal-actions">
-            <button className="button primary modal-cta" type="button" onClick={() => onQuickRent(item)} disabled={isOutOfStock}>
+            <button
+              className="button primary modal-cta"
+              type="button"
+              onClick={() => onQuickRent(item)}
+              disabled={isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)}
+            >
               Быстрая аренда
             </button>
-            <button className="button ghost modal-cta" type="button" onClick={() => onAddToCart(item)} disabled={isOutOfStock}>
+            <button
+              className="button ghost modal-cta"
+              type="button"
+              onClick={() => onAddToCart(item)}
+              disabled={isOutOfStock || (!hasAvailabilityV2 && isAllBusyNow)}
+            >
               Добавить в корзину
             </button>
           </div>
