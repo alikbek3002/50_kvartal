@@ -174,8 +174,13 @@ export default function App() {
     })
   }
 
-  const removeProduct = async (id) => {
+  const removeProduct = async (id, name) => {
     if (!id) return
+
+    const label = String(name || '').trim() ? `«${String(name).trim()}»` : `#${id}`
+    const ok = window.confirm(`Удалить товар ${label}? Это действие нельзя отменить.`)
+    if (!ok) return
+
     setLoading(true)
     setError('')
     try {
@@ -487,7 +492,7 @@ export default function App() {
                         <button className="button ghost" type="button" onClick={() => startEdit(p)} disabled={loading}>
                           Редактировать
                         </button>
-                        <button className="button ghost danger" type="button" onClick={() => removeProduct(p.id)} disabled={loading}>
+                        <button className="button ghost danger" type="button" onClick={() => removeProduct(p.id, p.name)} disabled={loading}>
                           Удалить
                         </button>
                         <button className="button primary" type="button" onClick={() => openBooking(p)} disabled={loading}>
