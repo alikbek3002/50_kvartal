@@ -609,6 +609,8 @@ app.post('/api/products', requireAdmin, async (req, res) => {
       price_per_day,
       pricePerDay,
       price,
+      is_active,
+      isActive,
     } = req.body;
 
     const resolvedImageUrl = image_url ?? imageUrl ?? null;
@@ -616,11 +618,12 @@ app.post('/api/products', requireAdmin, async (req, res) => {
     const imageUrlPrimary = resolvedImageUrls[0] ?? resolvedImageUrl ?? null;
     const resolvedPricePerDay = price_per_day ?? pricePerDay ?? price ?? 100;
     const resolvedStock = stock ?? 0;
+    const resolvedIsActive = is_active ?? isActive ?? true;
     
     await client.query('BEGIN');
     const result = await client.query(
-      `INSERT INTO products (name, description, category, brand, stock, image_url, image_urls, price_per_day)
-       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
+      `INSERT INTO products (name, description, category, brand, stock, image_url, image_urls, price_per_day, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)
        RETURNING *`,
       [
         name,
@@ -631,6 +634,7 @@ app.post('/api/products', requireAdmin, async (req, res) => {
         imageUrlPrimary,
         JSON.stringify(resolvedImageUrls),
         resolvedPricePerDay,
+        Boolean(resolvedIsActive),
       ]
     );
 
@@ -1222,14 +1226,15 @@ app.post('/api/admin/bookings', requireAdmin, requireDbReady, async (req, res) =
       return res.status(400).json({ error: 'endAt must be after startAt' });
     }
 
-    const productExists = await pool.query('SELECT 1 FROM products WHERE id = $1', [resolvedProductId]);
-    if (!productExists.rowCount) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-
     const requestedQty = Number.isFinite(Number(quantity)) ? Math.max(1, Math.floor(Number(quantity))) : 1;
 
     await client.query('BEGIN');
+
+    const productExists = await client.query('SELECT 1 FROM products WHERE id = $1 FOR UPDATE', [resolvedProductId]);
+    if (!productExists.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Product not found' });
+    }
 
     const allocation = await allocateUnitIdsForBooking(client, {
       productId: resolvedProductId,
@@ -1342,21 +1347,36 @@ app.get('/api/admin/bookings', requireAdmin, requireDbReady, async (req, res) =>
 
 // Admin: удалить бронь
 app.delete('/api/admin/bookings/:id', requireAdmin, requireDbReady, async (req, res) => {
+  const client = await pool.connect();
   try {
     const id = Number(req.params?.id);
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ error: 'Invalid id' });
     }
 
-    const deleted = await pool.query('DELETE FROM bookings WHERE id = $1 RETURNING id', [id]);
+    await client.query('BEGIN');
+    const deleted = await client.query(
+      `DELETE FROM bookings
+       WHERE id = $1
+       RETURNING id, product_id AS "productId", unit_id AS "unitId", start_at AS "startAt", end_at AS "endAt"`,
+      [id]
+    );
     if (!deleted.rowCount) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Booking not found' });
     }
-
-    return res.json({ success: true });
+    await client.query('COMMIT');
+    return res.json({ success: true, deleted: deleted.rows[0] });
   } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // ignore
+    }
     console.error('Ошибка удаления брони:', error);
     return res.status(500).json({ error: 'Ошибка при удалении брони' });
+  } finally {
+    client.release();
   }
 });
 

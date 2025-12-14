@@ -10,6 +10,7 @@ function getAuthHeader(token) {
 async function apiFetch(path, { token, method = 'GET', headers, body } = {}) {
   const response = await fetch(`${API_URL}${path}`, {
     method,
+    cache: 'no-store',
     headers: {
       ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...getAuthHeader(token),
@@ -337,10 +338,13 @@ export default function App() {
     setBookingListLoading(true)
     try {
       const data = await apiFetch(`/api/admin/bookings?productId=${encodeURIComponent(productId)}`, { token })
-      setBookingList(Array.isArray(data) ? data : [])
+      const list = Array.isArray(data) ? data : []
+      setBookingList(list)
+      return list
     } catch (e) {
       setBookingError(e.message || 'Ошибка загрузки броней')
       setBookingList([])
+      return []
     } finally {
       setBookingListLoading(false)
     }
@@ -366,11 +370,15 @@ export default function App() {
     setBookingSuccess('')
 
     try {
+      const productId = bookingProduct?.id
       await apiFetch(`/api/admin/bookings/${bookingId}`, { token, method: 'DELETE' })
       setBookingSuccess('Бронь удалена')
-      if (bookingProduct?.id) {
-        await loadBookings(bookingProduct.id)
-        await loadUnitStatuses(bookingProduct.id)
+      if (productId) {
+        const refreshed = await loadBookings(productId)
+        if (refreshed.some((b) => Number(b?.id) === Number(bookingId))) {
+          throw new Error('Бронь не удалилась в БД (после обновления она всё ещё есть)')
+        }
+        await loadUnitStatuses(productId)
       }
       await loadProducts(token)
     } catch (e) {
