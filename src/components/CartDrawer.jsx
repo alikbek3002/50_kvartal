@@ -1,7 +1,10 @@
 import { useEffect } from 'react'
 import { getProductImage } from '../utils/imageLoader'
+import { useSwipeDownToClose } from '../utils/useSwipeDownToClose'
 
 export const CartDrawer = ({ isOpen, items, onClose, onRemove, onCheckout, onEditDate }) => {
+  const { targetRef, handleProps } = useSwipeDownToClose({ onClose, enabled: Boolean(isOpen) })
+
   // Блокировка скролла при открытой корзине
   useEffect(() => {
     if (isOpen) {
@@ -24,7 +27,10 @@ export const CartDrawer = ({ isOpen, items, onClose, onRemove, onCheckout, onEdi
 
   return (
     <div className="cart-overlay" onClick={onClose}>
-      <div className="cart-panel" onClick={(event) => event.stopPropagation()}>
+      <div ref={targetRef} className="cart-panel" onClick={(event) => event.stopPropagation()}>
+        <div className="sheet-grabber" aria-hidden="true" {...handleProps}>
+          <div className="sheet-grabber__pill" />
+        </div>
         <div className="cart-panel__header">
           <h3>Корзина</h3>
           <button className="cart-close" onClick={onClose} aria-label="Закрыть корзину" type="button">

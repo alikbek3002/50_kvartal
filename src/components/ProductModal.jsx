@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getProductImages } from '../utils/imageLoader'
 import { formatBrand, formatBookedUntil } from '../utils/helpers'
+import { useSwipeDownToClose } from '../utils/useSwipeDownToClose'
 
 export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
+  const { targetRef, handleProps } = useSwipeDownToClose({ onClose, enabled: Boolean(item) })
+
   // Блокировка скролла при открытом модальном окне
   useEffect(() => {
     if (item) {
@@ -39,7 +42,10 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
     : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+      <div ref={targetRef} className="modal-card" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="sheet-grabber" aria-hidden="true" {...handleProps}>
+          <div className="sheet-grabber__pill" />
+        </div>
         <button className="modal-close" onClick={onClose} aria-label="Закрыть" type="button">
           ×
         </button>

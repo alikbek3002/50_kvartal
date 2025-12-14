@@ -836,6 +836,24 @@ body {
   cursor: pointer;
 }
 
+/* Bottom-sheet grabber (used for swipe-down-to-close on mobile) */
+.sheet-grabber {
+  display: none;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 0 8px;
+  margin: -6px 0 8px;
+  touch-action: none;
+}
+
+.sheet-grabber__pill {
+  width: 44px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
 .modal-tags {
   display: flex;
   flex-wrap: wrap;
@@ -943,6 +961,12 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #050505;
+  padding: 6px 0;
+  margin-top: -6px;
 }
 
 .cart-close {
@@ -1906,6 +1930,10 @@ body {
     margin: 0;
   }
 
+  .sheet-grabber {
+    display: flex;
+  }
+
   @keyframes slideUp {
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
@@ -1945,6 +1973,7 @@ body {
   .cart-panel {
     width: 100%;
     padding: 24px 20px;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     border-radius: 24px 24px 0 0;
     max-height: 85vh;
     animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -3669,6 +3698,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 24px;
   padding: 40px;
+  padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
   max-width: 550px;
   width: 90%;
   max-height: 85vh;
@@ -3681,10 +3711,34 @@ body {
   overscroll-behavior: contain;
 }
 
+.checkout-modal__header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: -40px -40px 18px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 40px 10px;
+  background: rgba(18, 18, 18, 0.98);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.checkout-modal__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* In CheckoutModal we place the close button inside the sticky header */
+.checkout-modal .modal-close {
+  position: static;
+  flex: 0 0 auto;
+}
+
 .checkout-modal__title {
   font-size: 2rem;
   font-weight: 700;
-  margin: 0 0 32px;
+  margin: 0;
   color: var(--text-primary);
 }
 
@@ -4100,9 +4154,14 @@ body {
 
   .checkout-modal {
     padding: 20px;
-    padding-top: 50px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     max-width: 92%;
     max-height: 92vh;
+  }
+
+  .checkout-modal__header {
+    margin: -20px -20px 14px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 20px 8px;
   }
 
   .checkout-modal__title {
@@ -4110,14 +4169,18 @@ body {
   }
 
   .checkout-item {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
+    flex-direction: row;
+    align-items: flex-start;
+    text-align: left;
   }
 
   .checkout-item__image {
-    width: 100px;
-    height: 100px;
+    width: 72px;
+    height: 72px;
+  }
+
+  .checkout-item__details h5 {
+    padding-right: 44px;
   }
 
   .checkout-modal__actions {
@@ -4183,18 +4246,23 @@ body {
 
   .checkout-modal {
     padding: 16px;
-    padding-top: 50px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     max-width: 95%;
     border-radius: 16px;
   }
 
+  .checkout-modal__header {
+    margin: -16px -16px 12px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 8px;
+  }
+
   .checkout-modal .modal-close {
-    top: 8px;
-    right: 8px;
-    width: 36px;
-    height: 36px;
-    font-size: 1.8rem;
-    z-index: 10;
+    width: 44px;
+    height: 44px;
+    font-size: 2rem;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.6);
+    border-color: rgba(255, 255, 255, 0.18);
   }
 
   /* Адаптив для страницы оформления на маленьких телефонах */

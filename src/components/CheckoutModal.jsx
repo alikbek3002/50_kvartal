@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { getProductImage } from '../utils/imageLoader'
 import { sendOrderToTelegram } from '../utils/telegram'
+import { useSwipeDownToClose } from '../utils/useSwipeDownToClose'
 
 export const CheckoutModal = ({ isOpen, items, onClose, onRemove, onClearCart }) => {
+  const { targetRef, handleProps } = useSwipeDownToClose({ onClose, enabled: Boolean(isOpen) })
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -84,10 +87,18 @@ export const CheckoutModal = ({ isOpen, items, onClose, onRemove, onClearCart })
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="checkout-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose} aria-label="Закрыть" type="button">
-          ×
-        </button>
+      <div ref={targetRef} className="checkout-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="checkout-modal__header">
+          <div className="sheet-grabber" aria-hidden="true" {...handleProps}>
+            <div className="sheet-grabber__pill" />
+          </div>
+          <div className="checkout-modal__header-row">
+            <h3 className="checkout-modal__title">Оформление заказа</h3>
+            <button className="modal-close" onClick={onClose} aria-label="Закрыть" type="button">
+              ×
+            </button>
+          </div>
+        </div>
         
         {submitSuccess ? (
           <div className="checkout-success">
@@ -100,8 +111,6 @@ export const CheckoutModal = ({ isOpen, items, onClose, onRemove, onClearCart })
           </div>
         ) : (
           <>
-            <h3 className="checkout-modal__title">Оформление заказа</h3>
-            
             <form onSubmit={handleSubmit} className="checkout-modal__form">
               <h4>Контактные данные:</h4>
               
@@ -149,54 +158,54 @@ export const CheckoutModal = ({ isOpen, items, onClose, onRemove, onClearCart })
                   ⚠️ Ошибка отправки. Проверьте настройки бота или попробуйте позже.
                 </div>
               )}
+
+              <div className="checkout-modal__items">
+                <h4>Ваш заказ:</h4>
+                <div className="checkout-items-list">
+                  {items.map(({ item, count, rentalPeriod }, index) => {
+                    const days = Math.ceil((new Date(rentalPeriod.dateTo) - new Date(rentalPeriod.dateFrom)) / (1000 * 60 * 60 * 24)) + 1
+                    const cost = days * (item.pricePerDay || 100)
+                    
+                    return (
+                      <div key={`${item.name}-${index}`} className="checkout-item">
+                        <div className="checkout-item__image">
+                          <img src={getProductImage(item)} alt={item.name} />
+                        </div>
+                        <div className="checkout-item__details">
+                          <h5>{item.name}</h5>
+                          <p className="checkout-item__period">
+                            {new Date(rentalPeriod.dateFrom).toLocaleDateString('ru-RU')} - {new Date(rentalPeriod.dateTo).toLocaleDateString('ru-RU')}
+                            <br />
+                            {rentalPeriod.timeFrom} - {rentalPeriod.timeTo}
+                          </p>
+                          <p className="checkout-item__cost">{days} дн. × {item.pricePerDay || 100} сом = {cost} сом</p>
+                        </div>
+                        <button 
+                          type="button" 
+                          className="checkout-item__remove" 
+                          onClick={() => onRemove(item.name)}
+                          aria-label="Удалить товар"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="checkout-total">
+                  <strong>Итого:</strong> <span>{totalCost} сом</span>
+                </div>
+              </div>
+
+              <div className="checkout-modal__actions">
+                <button type="button" className="button ghost" onClick={onClose}>
+                  Отмена
+                </button>
+                <button type="submit" className="button primary" disabled={!isFormValid || isSubmitting}>
+                  {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
+                </button>
+              </div>
             </form>
-
-            <div className="checkout-modal__items">
-              <h4>Ваш заказ:</h4>
-              <div className="checkout-items-list">
-                {items.map(({ item, count, rentalPeriod }, index) => {
-                  const days = Math.ceil((new Date(rentalPeriod.dateTo) - new Date(rentalPeriod.dateFrom)) / (1000 * 60 * 60 * 24)) + 1
-                  const cost = days * (item.pricePerDay || 100)
-                  
-                  return (
-                    <div key={`${item.name}-${index}`} className="checkout-item">
-                      <div className="checkout-item__image">
-                        <img src={getProductImage(item)} alt={item.name} />
-                      </div>
-                      <div className="checkout-item__details">
-                        <h5>{item.name}</h5>
-                        <p className="checkout-item__period">
-                          {new Date(rentalPeriod.dateFrom).toLocaleDateString('ru-RU')} - {new Date(rentalPeriod.dateTo).toLocaleDateString('ru-RU')}
-                          <br />
-                          {rentalPeriod.timeFrom} - {rentalPeriod.timeTo}
-                        </p>
-                        <p className="checkout-item__cost">{days} дн. × {item.pricePerDay || 100} сом = {cost} сом</p>
-                      </div>
-                      <button 
-                        type="button" 
-                        className="checkout-item__remove" 
-                        onClick={() => onRemove(item.name)}
-                        aria-label="Удалить товар"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="checkout-total">
-                <strong>Итого:</strong> <span>{totalCost} сом</span>
-              </div>
-            </div>
-
-            <div className="checkout-modal__actions">
-              <button type="button" className="button ghost" onClick={onClose}>
-                Отмена
-              </button>
-              <button type="submit" className="button primary" disabled={!isFormValid || isSubmitting} onClick={handleSubmit}>
-                {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
-              </button>
-            </div>
           </>
         )}
       </div>
