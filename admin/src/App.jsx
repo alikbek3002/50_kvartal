@@ -204,6 +204,30 @@ export default function App() {
     }
   }
 
+  const cleanupSeedCatalog = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const result = await apiFetch('/api/admin/catalog/cleanup-seed', { token, method: 'POST' })
+      await loadProducts(token)
+      setUiModal({
+        title: 'Очистка каталога',
+        message: `Скрыто seed-товаров: ${result?.deactivated ?? 0}\nАктивных товаров сейчас: ${result?.activeNow ?? '—'}`,
+        primaryLabel: 'Ок',
+        onPrimary: () => setUiModal(null),
+      })
+    } catch (e) {
+      setUiModal({
+        title: 'Не удалось очистить каталог',
+        message: e.message || 'Ошибка очистки каталога',
+        primaryLabel: 'Ок',
+        onPrimary: () => setUiModal(null),
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!token) return
     loadProducts(token)
@@ -593,6 +617,9 @@ export default function App() {
                   </button>
                   <button className="button ghost" type="button" onClick={restoreCatalog} disabled={loading}>
                     Восстановить товары
+                  </button>
+                  <button className="button ghost danger" type="button" onClick={cleanupSeedCatalog} disabled={loading}>
+                    Убрать лишние (54→36)
                   </button>
                   <button className="button primary" type="button" onClick={startCreate} disabled={loading}>
                     Добавить товар

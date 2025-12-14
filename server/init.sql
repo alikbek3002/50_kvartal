@@ -184,6 +184,11 @@ FROM (
     ('Avenger I920SDL Полотно для флага 12х12'' (360х360см)', NULL, 'Модификаторы и текстиль', 'Avenger', 1, 100::NUMERIC, NULL, TRUE),
     ('Grip Текстиль 6''x6'' BB COTON Т 6-BB-C', NULL, 'Модификаторы и текстиль', 'Grip Textile', 2, 100::NUMERIC, NULL, TRUE)
 ) AS v(name, description, category, brand, stock, price_per_day, image_url, is_active)
-WHERE NOT EXISTS (
-  SELECT 1 FROM products p WHERE p.name = v.name
-);
+WHERE
+  -- IMPORTANT: seed only into an empty DB (otherwise it pollutes an already curated catalog)
+  NOT EXISTS (SELECT 1 FROM products p0 LIMIT 1)
+  AND NOT EXISTS (
+    SELECT 1
+    FROM products p
+    WHERE lower(trim(p.name)) = lower(trim(v.name))
+  );

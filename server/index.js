@@ -543,6 +543,51 @@ app.post('/api/admin/catalog/restore', requireAdmin, requireDbReady, async (req,
   }
 });
 
+// Admin: hide "seed" products that were auto-inserted by init.sql
+// This fixes the common situation when a curated catalog already exists, but seed products keep appearing after redeploys.
+app.post('/api/admin/catalog/cleanup-seed', requireAdmin, requireDbReady, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const seedNames = SEED_PRODUCTS.map((p) => p.name);
+
+    await client.query('BEGIN');
+
+    // Deactivate only products that look like default seed:
+    // - name in seed list
+    // - no images stored (image_url + image_urls empty)
+    // This reduces risk of hiding a real curated product that happens to share a name.
+    const updated = await client.query(
+      `UPDATE products
+       SET is_active = FALSE, updated_at = NOW()
+       WHERE is_active = TRUE
+         AND name = ANY($1::text[])
+         AND COALESCE(NULLIF(trim(image_url), ''), '') = ''
+         AND image_urls IS NULL
+       RETURNING id`,
+      [seedNames]
+    );
+
+    const activeCount = await client.query(`SELECT COUNT(*)::int AS count FROM products WHERE is_active = TRUE`);
+    await client.query('COMMIT');
+
+    return res.json({
+      success: true,
+      deactivated: updated.rowCount || 0,
+      activeNow: activeCount.rows?.[0]?.count ?? 0,
+    });
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // ignore
+    }
+    console.error('Ошибка очистки seed каталога:', error);
+    return res.status(500).json({ error: 'Ошибка очистки каталога' });
+  } finally {
+    client.release();
+  }
+});
+
 // API для загрузки изображения
 app.post('/api/upload', requireAdmin, uploadImageMiddleware, async (req, res) => {
   try {
