@@ -1190,16 +1190,32 @@ app.delete('/api/products/:id', requireAdmin, async (req, res) => {
     if (!dbReady) {
       return res.status(503).json({ error: 'DB is not ready yet' });
     }
-    const { id } = req.params;
+    const id = Number(req.params?.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
+
+    const existing = await pool.query(`SELECT id, is_active AS "isActive" FROM products WHERE id = $1`, [id]);
+    if (!existing.rowCount) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Safety: prevent deleting a visible product from the catalog by mistake.
+    if (existing.rows[0].isActive === true) {
+      return res.status(409).json({
+        error: 'Нельзя удалить активный товар. Сначала выключите "Активен" (скройте товар), затем попробуйте удалить снова.',
+      });
+    }
+
     await pool.query('DELETE FROM products WHERE id = $1', [id]);
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
     console.error('Ошибка удаления товара:', error);
     // Postgres FK violation (e.g. order_items -> products)
     if (error?.code === '23503') {
       return res.status(409).json({
         error:
-          'Нельзя удалить товар: он уже участвует в заказах. Сделайте его неактивным (выключите "Активен"), чтобы скрыть с витрины.',
+          'Нельзя удалить товар: он уже участвует в заказах (история заказов). Удаление запрещено, чтобы не ломать данные. Оставьте товар скрытым.',
       });
     }
     res.status(500).json({ error: 'Ошибка при удалении товара' });

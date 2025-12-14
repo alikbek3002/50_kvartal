@@ -126,6 +126,79 @@
   color: var(--text-primary);
 }
 
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.toggle-row__label {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+.toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.toggle__track {
+  width: 50px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.10);
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.toggle__thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.45);
+  transform: translateX(0);
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.toggle input:checked + .toggle__track {
+  background: rgba(255, 106, 0, 0.22);
+  border-color: rgba(255, 106, 0, 0.55);
+}
+
+.toggle input:checked + .toggle__track .toggle__thumb {
+  transform: translateX(20px);
+  background: rgba(255, 255, 255, 1);
+}
+
+.toggle input:focus-visible + .toggle__track {
+  outline: 2px solid rgba(255, 106, 0, 0.65);
+  outline-offset: 2px;
+}
+
+.modal-card--alert {
+  max-width: 520px;
+}
+
 .form-group textarea {
   width: 100%;
   padding: 10px 12px;

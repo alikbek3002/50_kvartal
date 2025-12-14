@@ -118,6 +118,7 @@ export default function App() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [uiModal, setUiModal] = useState(null)
 
   const [form, setForm] = useState(emptyForm)
   const isEditing = useMemo(() => Boolean(form.id), [form.id])
@@ -270,10 +271,30 @@ export default function App() {
     setError('')
   }
 
-  const removeProduct = async (id, name) => {
+  const closeUiModal = () => setUiModal(null)
+
+  const removeProduct = async (product) => {
+    const id = product?.id
     if (!id) return
 
+    const name = product?.name
     const label = String(name || '').trim() ? `«${String(name).trim()}»` : `#${id}`
+
+    if (product?.isActive) {
+      setUiModal({
+        title: 'Нельзя удалить активный товар',
+        message: `Товар ${label} сейчас активен и показывается на сайте.\n\nСначала снимите «Показывать на сайте», сохраните, и только потом удаляйте.`,
+        primaryLabel: 'Открыть редактирование',
+        onPrimary: () => {
+          closeUiModal()
+          startEdit(product)
+        },
+        secondaryLabel: 'Закрыть',
+        onSecondary: closeUiModal,
+      })
+      return
+    }
+
     const ok = window.confirm(`Удалить товар ${label}? Это действие нельзя отменить.`)
     if (!ok) return
 
@@ -284,7 +305,14 @@ export default function App() {
       await loadProducts(token)
       if (form.id === id) setForm(emptyForm)
     } catch (e) {
-      setError(e.message || 'Ошибка удаления')
+      const raw = e?.message || 'Ошибка удаления'
+      setError('')
+      setUiModal({
+        title: 'Не удалось удалить товар',
+        message: raw,
+        primaryLabel: 'Понятно',
+        onPrimary: closeUiModal,
+      })
     } finally {
       setLoading(false)
     }
@@ -611,7 +639,7 @@ export default function App() {
                         <button className="button ghost" type="button" onClick={() => startEdit(p)} disabled={loading}>
                           Редактировать
                         </button>
-                        <button className="button ghost danger" type="button" onClick={() => removeProduct(p.id, p.name)} disabled={loading}>
+                        <button className="button ghost danger" type="button" onClick={() => removeProduct(p)} disabled={loading}>
                           Удалить
                         </button>
                         <button className="button primary" type="button" onClick={() => openBooking(p)} disabled={loading}>
@@ -723,14 +751,19 @@ export default function App() {
                   </div>
 
                   <div className="form-group">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={Boolean(form.isActive)}
-                        onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
-                      />{' '}
-                      Активен (показывать на сайте)
-                    </label>
+                    <div className="toggle-row">
+                      <div className="toggle-row__label">Показывать на сайте</div>
+                      <label className="toggle">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(form.isActive)}
+                          onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
+                        />
+                        <span className="toggle__track" aria-hidden="true">
+                          <span className="toggle__thumb" />
+                        </span>
+                      </label>
+                    </div>
                   </div>
 
                   <div className="checkout-page__actions">
@@ -923,6 +956,50 @@ export default function App() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {uiModal && (
+        <div className="modal-overlay" onClick={closeUiModal}>
+          <div
+            className="modal-card modal-card--admin modal-card--alert"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <button className="modal-close" onClick={closeUiModal} aria-label="Закрыть" type="button">
+              ×
+            </button>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <div>
+                <p className="eyebrow">Внимание</p>
+                <h2 style={{ margin: 0, fontSize: '1.2rem' }}>{uiModal.title || 'Сообщение'}</h2>
+              </div>
+              <div className="cart-page" style={{ padding: 14, whiteSpace: 'pre-wrap' }}>
+                {uiModal.message || ''}
+              </div>
+              <div className="checkout-page__actions">
+                {uiModal.secondaryLabel && (
+                  <button
+                    className="button ghost"
+                    type="button"
+                    onClick={() => (typeof uiModal.onSecondary === 'function' ? uiModal.onSecondary() : closeUiModal())}
+                    disabled={loading}
+                  >
+                    {uiModal.secondaryLabel}
+                  </button>
+                )}
+                <button
+                  className="button primary"
+                  type="button"
+                  onClick={() => (typeof uiModal.onPrimary === 'function' ? uiModal.onPrimary() : closeUiModal())}
+                  disabled={loading}
+                >
+                  {uiModal.primaryLabel || 'Ок'}
+                </button>
               </div>
             </div>
           </div>
