@@ -69,6 +69,15 @@ function getProductImage(item) {
   return 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80'
 }
 
+function resolveAdminImageUrl(value) {
+  const url = String(value || '').trim()
+  if (!url) return ''
+  if (API_URL && (url.startsWith('/api/') || url.startsWith('/uploads/'))) {
+    return `${API_URL}${url}`
+  }
+  return url
+}
+
 function normalizeImageUrls(value) {
   const asString = typeof value === 'string' ? value : ''
   const urls = asString
@@ -113,6 +122,17 @@ export default function App() {
   const isEditing = useMemo(() => Boolean(form.id), [form.id])
   const [productEditorOpen, setProductEditorOpen] = useState(false)
   const scrollLockRef = useRef({ locked: false, previousOverflow: '' })
+  const [editorImageIndex, setEditorImageIndex] = useState(0)
+
+  const editorImages = useMemo(() => {
+    const list = Array.isArray(form?.imageUrls) ? form.imageUrls : []
+    return list.map((u) => String(u || '').trim()).filter(Boolean).slice(0, 12)
+  }, [form?.imageUrls])
+
+  useEffect(() => {
+    if (!productEditorOpen) return
+    setEditorImageIndex(0)
+  }, [productEditorOpen, editorImages.length])
 
   const [bookingProduct, setBookingProduct] = useState(null)
   const [bookingDateFrom, setBookingDateFrom] = useState('')
@@ -605,114 +625,178 @@ export default function App() {
 
       {productEditorOpen && (
         <div className="modal-overlay" onClick={closeProductEditor}>
-          <div className="modal-card modal-card--admin" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+          <div className="modal-card modal-card--admin modal-card--product-editor" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
             <button className="modal-close" onClick={closeProductEditor} aria-label="Закрыть" type="button">
               ×
             </button>
 
-            <form onSubmit={saveProduct} className="checkout-page__form">
-              <h3>{isEditing ? 'Редактирование товара' : 'Новый товар'}</h3>
+            <form onSubmit={saveProduct} className="checkout-page__form product-editor">
+              <div className="product-editor__layout">
+                <div className="product-editor__fields">
+                  <h3>{isEditing ? 'Редактирование товара' : 'Новый товар'}</h3>
 
-              {error && <div className="error-message">⚠️ {error}</div>}
+                  {error && <div className="error-message">⚠️ {error}</div>}
 
-              <div className="form-group">
-                <label>Название</label>
-                <input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} required />
-              </div>
+                  <div className="form-group">
+                    <label>Название</label>
+                    <input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} required />
+                  </div>
 
-              <div className="form-group">
-                <label>Категория</label>
-                <input value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))} />
-              </div>
+                  <div className="form-group">
+                    <label>Категория</label>
+                    <input value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))} />
+                  </div>
 
-              <div className="form-group">
-                <label>Бренд</label>
-                <input value={form.brand} onChange={(e) => setForm((prev) => ({ ...prev, brand: e.target.value }))} />
-              </div>
+                  <div className="form-group">
+                    <label>Бренд</label>
+                    <input value={form.brand} onChange={(e) => setForm((prev) => ({ ...prev, brand: e.target.value }))} />
+                  </div>
 
-              <div className="form-group">
-                <label>Остаток (stock)</label>
-                <input
-                  type="number"
-                  value={form.stock}
-                  onChange={(e) => setForm((prev) => ({ ...prev, stock: Number(e.target.value) }))}
-                />
-              </div>
+                  <div className="form-group">
+                    <label>Остаток (stock)</label>
+                    <input
+                      type="number"
+                      value={form.stock}
+                      onChange={(e) => setForm((prev) => ({ ...prev, stock: Number(e.target.value) }))}
+                    />
+                  </div>
 
-              <div className="form-group">
-                <label>Цена за сутки</label>
-                <input
-                  type="number"
-                  value={form.pricePerDay}
-                  onChange={(e) => setForm((prev) => ({ ...prev, pricePerDay: Number(e.target.value) }))}
-                />
-              </div>
+                  <div className="form-group">
+                    <label>Цена за сутки</label>
+                    <input
+                      type="number"
+                      value={form.pricePerDay}
+                      onChange={(e) => setForm((prev) => ({ ...prev, pricePerDay: Number(e.target.value) }))}
+                    />
+                  </div>
 
-              <div className="form-group">
-                <label>Ссылки на картинки (несколько — через перенос строки или запятую)</label>
-                <textarea
-                  value={(form.imageUrls || []).join('\n')}
-                  onChange={(e) => setForm((prev) => ({ ...prev, imageUrls: normalizeImageUrls(e.target.value) }))}
-                />
-              </div>
+                  <div className="form-group">
+                    <label>Ссылки на картинки (несколько — через перенос строки или запятую)</label>
+                    <textarea
+                      value={(form.imageUrls || []).join('\n')}
+                      onChange={(e) => setForm((prev) => ({ ...prev, imageUrls: normalizeImageUrls(e.target.value) }))}
+                    />
+                  </div>
 
-              <div className="form-group">
-                <label>Загрузить картинку</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={async (e) => {
-                    const files = Array.from(e.target.files || [])
-                    if (files.length === 0) return
-                    try {
-                      setLoading(true)
-                      const uploaded = []
-                      for (const file of files) {
-                        const url = await uploadImage(file)
-                        if (url) uploaded.push(url)
-                      }
-                      if (uploaded.length) {
-                        setForm((prev) => ({
-                          ...prev,
-                          imageUrls: Array.from(new Set([...(prev.imageUrls || []), ...uploaded])).slice(0, 12),
-                        }))
-                      }
-                    } catch (err) {
-                      setError(err.message || 'Ошибка загрузки картинки')
-                    } finally {
-                      setLoading(false)
-                    }
-                  }}
-                />
-              </div>
+                  <div className="form-group">
+                    <label>Загрузить картинку</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files || [])
+                        if (files.length === 0) return
+                        try {
+                          setLoading(true)
+                          const uploaded = []
+                          for (const file of files) {
+                            const url = await uploadImage(file)
+                            if (url) uploaded.push(url)
+                          }
+                          if (uploaded.length) {
+                            setForm((prev) => ({
+                              ...prev,
+                              imageUrls: Array.from(new Set([...(prev.imageUrls || []), ...uploaded])).slice(0, 12),
+                            }))
+                          }
+                        } catch (err) {
+                          setError(err.message || 'Ошибка загрузки картинки')
+                        } finally {
+                          setLoading(false)
+                        }
+                      }}
+                    />
+                  </div>
 
-              <div className="form-group">
-                <label>Описание</label>
-                <input value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} />
-              </div>
+                  <div className="form-group">
+                    <label>Описание</label>
+                    <input value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} />
+                  </div>
 
-              <div className="form-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(form.isActive)}
-                    onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
-                  />{' '}
-                  Активен (показывать на сайте)
-                </label>
-              </div>
+                  <div className="form-group">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(form.isActive)}
+                        onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
+                      />{' '}
+                      Активен (показывать на сайте)
+                    </label>
+                  </div>
 
-              <div className="checkout-page__actions">
-                <button className="button ghost" type="button" onClick={closeProductEditor} disabled={loading}>
-                  Отмена
-                </button>
-                <button className="button ghost" type="button" onClick={() => setForm(emptyForm)} disabled={loading}>
-                  Очистить
-                </button>
-                <button className="button primary" type="submit" disabled={loading}>
-                  {loading ? 'Сохранение...' : 'Сохранить'}
-                </button>
+                  <div className="checkout-page__actions">
+                    <button className="button ghost" type="button" onClick={closeProductEditor} disabled={loading}>
+                      Отмена
+                    </button>
+                    <button className="button ghost" type="button" onClick={() => setForm(emptyForm)} disabled={loading}>
+                      Очистить
+                    </button>
+                    <button className="button primary" type="submit" disabled={loading}>
+                      {loading ? 'Сохранение...' : 'Сохранить'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="product-editor__media">
+                  <p className="eyebrow" style={{ marginBottom: 8 }}>Фото</p>
+                  <div className="product-editor__preview">
+                    {editorImages.length > 0 ? (
+                      <>
+                        <img
+                          src={resolveAdminImageUrl(editorImages[Math.min(editorImageIndex, editorImages.length - 1)]) || getProductImage(form)}
+                          alt={form.name || 'Фото товара'}
+                          loading="lazy"
+                        />
+                        {editorImages.length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              className="product-editor__nav product-editor__nav--prev"
+                              onClick={() => setEditorImageIndex((prev) => (prev - 1 + editorImages.length) % editorImages.length)}
+                              aria-label="Предыдущее фото"
+                            >
+                              ‹
+                            </button>
+                            <button
+                              type="button"
+                              className="product-editor__nav product-editor__nav--next"
+                              onClick={() => setEditorImageIndex((prev) => (prev + 1) % editorImages.length)}
+                              aria-label="Следующее фото"
+                            >
+                              ›
+                            </button>
+                            <div className="product-editor__counter">{Math.min(editorImageIndex + 1, editorImages.length)} / {editorImages.length}</div>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <div className="product-editor__empty">
+                        Добавьте ссылки или загрузите фото
+                      </div>
+                    )}
+                  </div>
+
+                  {editorImages.length > 1 && (
+                    <div className="product-editor__thumbs" role="tablist" aria-label="Миниатюры">
+                      {editorImages.map((u, idx) => {
+                        const active = idx === editorImageIndex
+                        return (
+                          <button
+                            key={`${u}-${idx}`}
+                            type="button"
+                            className={`product-editor__thumb ${active ? 'is-active' : ''}`}
+                            onClick={() => setEditorImageIndex(idx)}
+                            aria-label={`Фото ${idx + 1}`}
+                            aria-current={active ? 'true' : 'false'}
+                          >
+                            <img src={resolveAdminImageUrl(u)} alt="" loading="lazy" />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </form>
           </div>

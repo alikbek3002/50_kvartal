@@ -314,6 +314,10 @@ code {
   max-width: 560px;
 }
 
+.modal-card--product-editor {
+  max-width: 980px;
+}
+
 .modal-close {
   position: absolute;
   top: 14px;
@@ -327,4 +331,124 @@ code {
   font-size: 1.6rem;
   line-height: 1;
   cursor: pointer;
+}
+
+/* Product editor modal layout (fields left, images right) */
+.product-editor__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.product-editor__fields {
+  min-width: 0;
+}
+
+.product-editor__media {
+  min-width: 0;
+}
+
+.product-editor__preview {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.product-editor__preview img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+}
+
+.product-editor__empty {
+  padding: 22px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.product-editor__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--text-primary);
+  font-size: 1.8rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.product-editor__nav--prev {
+  left: 10px;
+}
+
+.product-editor__nav--next {
+  right: 10px;
+}
+
+.product-editor__counter {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+}
+
+.product-editor__thumbs {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-bottom: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.product-editor__thumb {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0;
+  cursor: pointer;
+}
+
+.product-editor__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.product-editor__thumb.is-active {
+  border-color: rgba(255, 106, 0, 0.6);
+  box-shadow: 0 0 0 2px rgba(255, 106, 0, 0.15);
+}
+
+@media (max-width: 900px) {
+  .modal-card--product-editor {
+    max-width: 720px;
+  }
+}
+
+@media (max-width: 740px) {
+  .product-editor__layout {
+    grid-template-columns: 1fr;
+  }
 }

@@ -992,12 +992,30 @@ body {
 
 .cart-item {
   display: flex;
-  gap: 14px;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.cart-item__summary {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .cart-item__thumb {
-  width: 72px;
-  height: 72px;
+  width: 60px;
+  height: 60px;
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1016,11 +1034,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 
-.cart-item__body h4 {
+.cart-item__title {
   margin: 0;
   font-size: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cart-item__body p {
@@ -1028,11 +1050,64 @@ body {
   color: var(--text-muted);
 }
 
+.cart-item__chevron {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text-primary);
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+  margin-left: 6px;
+}
+
+.cart-item.is-expanded .cart-item__chevron {
+  transform: rotate(-90deg);
+}
+
+.cart-item__details {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .cart-item__actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+@media (max-width: 767px) {
+  .cart-item {
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .cart-item__summary:active {
+    transform: scale(0.99);
+  }
+
+  .cart-item__period {
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .cart-item__chevron {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+  }
+
+  .cart-item__actions {
+    justify-content: flex-start;
+    gap: 18px;
+  }
 }
 
 .cart-item__qty {
@@ -2277,12 +2352,12 @@ body {
   }
 
   .cart-item__thumb {
-    width: 60px;
-    height: 60px;
-    border-radius: 10px;
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
   }
 
-  .cart-item__body h4 {
+  .cart-item__title {
     font-size: 0.9rem;
   }
 
