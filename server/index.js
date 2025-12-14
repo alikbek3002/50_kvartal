@@ -720,6 +720,47 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
+// Public: availability for a product in a given period (quantity-based booking support)
+// Returns how many active units are free for [startAt, endAt).
+app.get('/api/availability', requireDbReady, async (req, res) => {
+  try {
+    const productId = Number(req.query?.productId);
+    const startAtRaw = String(req.query?.startAt || '').trim();
+    const endAtRaw = String(req.query?.endAt || '').trim();
+
+    if (!Number.isFinite(productId) || productId <= 0) {
+      return res.status(400).json({ error: 'productId is required' });
+    }
+    if (!startAtRaw || !endAtRaw) {
+      return res.status(400).json({ error: 'startAt and endAt are required' });
+    }
+
+    const start = new Date(startAtRaw);
+    const end = new Date(endAtRaw);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Invalid startAt/endAt' });
+    }
+    if (end.getTime() <= start.getTime()) {
+      return res.status(400).json({ error: 'endAt must be after startAt' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await ensureProductUnits(client, productId);
+      const total = await getActiveUnitsCount(client, productId);
+      if (total <= 0) return res.json({ productId, available: 0, total: 0 });
+
+      const freeUnitIds = await findFreeUnitIdsForPeriod(client, productId, start.toISOString(), end.toISOString());
+      return res.json({ productId, available: freeUnitIds.length, total });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Ошибка получения доступности:', error);
+    return res.status(500).json({ error: 'Ошибка при получении доступности' });
+  }
+});
+
 function requireTelegramConfig() {
   const token = String(process.env.TELEGRAM_BOT_TOKEN || '').trim();
   const chatId = String(process.env.TELEGRAM_CHAT_ID || '').trim();

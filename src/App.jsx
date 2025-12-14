@@ -105,9 +105,10 @@ function App() {
 
   const cartCount = cartItems.reduce((sum, entry) => sum + entry.count, 0)
 
-  const addToCart = (item, rentalPeriod) => {
+  const addToCart = (item, rentalPeriod, count = 1) => {
+    const resolvedCount = Number.isFinite(Number(count)) ? Math.max(1, Math.floor(Number(count))) : 1
     setCartItems((prev) => {
-      return [...prev, { item, count: 1, rentalPeriod }]
+      return [...prev, { item, count: resolvedCount, rentalPeriod }]
     })
   }
 
@@ -155,24 +156,25 @@ function App() {
 
   const handleDateTimeSubmit = (rentalPeriod) => {
     const { item, mode } = dateTimePickerState
+    const qty = Number.isFinite(Number(rentalPeriod?.quantity)) ? Math.max(1, Math.floor(Number(rentalPeriod.quantity))) : 1
     
     if (mode === 'edit') {
       // Редактирование даты товара в корзине
       setCartItems((prev) =>
         prev.map((entry) =>
-          entry.item.name === editingCartItem ? { ...entry, rentalPeriod } : entry
+          entry.item.name === editingCartItem ? { ...entry, rentalPeriod, count: qty } : entry
         )
       )
       showToast('Даты аренды обновлены')
       setEditingCartItem(null)
       closeDateTimePicker()
     } else if (mode === 'cart') {
-      addToCart(item, rentalPeriod)
+      addToCart(item, rentalPeriod, qty)
       showToast('Товар добавлен в корзину')
       closeDateTimePicker()
       closeModal()
     } else if (mode === 'quick') {
-      addToCart(item, rentalPeriod)
+      addToCart(item, rentalPeriod, qty)
       closeDateTimePicker()
       closeModal()
       navigate('/checkout')
@@ -183,7 +185,12 @@ function App() {
     const cartItem = cartItems.find((entry) => entry.item.name === itemName)
     if (cartItem) {
       setEditingCartItem(itemName)
-      setDateTimePickerState({ isOpen: true, item: cartItem.item, mode: 'edit', existingPeriod: cartItem.rentalPeriod })
+      setDateTimePickerState({
+        isOpen: true,
+        item: cartItem.item,
+        mode: 'edit',
+        existingPeriod: { ...cartItem.rentalPeriod, quantity: cartItem.count },
+      })
     }
   }
 

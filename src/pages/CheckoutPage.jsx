@@ -68,9 +68,10 @@ export const CheckoutPage = ({ items, onRemove, onClearCart }) => {
 
   const isFormValid = formData.name.trim() && formData.phone.trim() && formData.address.trim()
 
-  const totalCost = items.reduce((sum, { item, rentalPeriod }) => {
+  const totalCost = items.reduce((sum, { item, count, rentalPeriod }) => {
     const days = Math.ceil((new Date(rentalPeriod.dateTo) - new Date(rentalPeriod.dateFrom)) / (1000 * 60 * 60 * 24)) + 1
-    return sum + days * (item.pricePerDay || 100)
+    const qty = Number.isFinite(Number(count)) ? Math.max(1, Math.floor(Number(count))) : 1
+    return sum + days * (item.pricePerDay || 100) * qty
   }, 0)
 
   if (items.length === 0 && !submitSuccess) {
@@ -136,7 +137,8 @@ export const CheckoutPage = ({ items, onRemove, onClearCart }) => {
                 <div className="checkout-items-list">
                   {items.map(({ item, count, rentalPeriod }, index) => {
                     const days = Math.ceil((new Date(rentalPeriod.dateTo) - new Date(rentalPeriod.dateFrom)) / (1000 * 60 * 60 * 24)) + 1
-                    const cost = days * (item.pricePerDay || 100)
+                    const qty = Number.isFinite(Number(count)) ? Math.max(1, Math.floor(Number(count))) : 1
+                    const cost = days * (item.pricePerDay || 100) * qty
                     
                     return (
                       <div key={`${item.name}-${index}`} className="checkout-item">
@@ -145,12 +147,15 @@ export const CheckoutPage = ({ items, onRemove, onClearCart }) => {
                         </div>
                         <div className="checkout-item__details">
                           <h5>{item.name}</h5>
+                          <p className="checkout-item__period" style={{ marginTop: 6 }}>
+                            Количество: <strong>{qty}</strong>
+                          </p>
                           <p className="checkout-item__period">
                             {new Date(rentalPeriod.dateFrom).toLocaleDateString('ru-RU')} - {new Date(rentalPeriod.dateTo).toLocaleDateString('ru-RU')}
                             <br />
                             {rentalPeriod.timeFrom} - {rentalPeriod.timeTo}
                           </p>
-                          <p className="checkout-item__cost">{days} дн. × {item.pricePerDay || 100} сом = {cost} сом</p>
+                          <p className="checkout-item__cost">{days} дн. × {item.pricePerDay || 100} сом × {qty} = {cost} сом</p>
                         </div>
                         <button 
                           type="button" 

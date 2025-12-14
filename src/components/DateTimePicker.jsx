@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { API_URL } from '../config'
 
 export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existingPeriod }) => {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [timeFrom, setTimeFrom] = useState('09:00')
   const [timeTo, setTimeTo] = useState('21:00')
+  const [quantity, setQuantity] = useState(1)
+  const [availability, setAvailability] = useState({ loading: false, available: null, total: null, error: '' })
   const [rentalDays, setRentalDays] = useState(0)
   const [totalPrice, setTotalPrice] = useState(0)
 
@@ -16,12 +19,15 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
       setDateTo(existingPeriod.dateTo)
       setTimeFrom(existingPeriod.timeFrom)
       setTimeTo(existingPeriod.timeTo)
+      const q = Number.isFinite(Number(existingPeriod.quantity)) ? Math.max(1, Math.floor(Number(existingPeriod.quantity))) : 1
+      setQuantity(q)
     } else if (isOpen) {
       // В других режимах сбрасываем форму
       setDateFrom('')
       setDateTo('')
       setTimeFrom('09:00')
       setTimeTo('21:00')
+      setQuantity(1)
     }
   }, [isOpen, mode, existingPeriod])
 
@@ -37,29 +43,118 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
     }
   }, [isOpen])
 
-  // Автоматический расчет стоимости при изменении дат
+  const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
+  const hasAvailabilityV2 =
+    item &&
+    (Object.prototype.hasOwnProperty.call(item, 'availableNow') ||
+      Object.prototype.hasOwnProperty.call(item, 'busyUnitsNow') ||
+      Object.prototype.hasOwnProperty.call(item, 'nextAvailableAt'))
+  const fallbackAvailableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
+
+  const buildLocalDateTime = (dateStr, timeStr) => {
+    if (!dateStr || !timeStr) return null
+    const value = new Date(`${dateStr}T${timeStr}:00`)
+    if (Number.isNaN(value.getTime())) return null
+    return value
+  }
+
+  const startIso = useMemo(() => {
+    const dt = buildLocalDateTime(dateFrom, timeFrom)
+    return dt ? dt.toISOString() : ''
+  }, [dateFrom, timeFrom])
+
+  const endIso = useMemo(() => {
+    const dt = buildLocalDateTime(dateTo, timeTo)
+    return dt ? dt.toISOString() : ''
+  }, [dateTo, timeTo])
+
+  // Проверяем реальную доступность по выбранному периоду (через бэкенд)
+  useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+
+    async function loadAvailability() {
+      if (!isOpen || !item?.id) return
+      if (!API_URL) {
+        setAvailability({ loading: false, available: null, total: null, error: '' })
+        return
+      }
+      if (!startIso || !endIso) {
+        setAvailability({ loading: false, available: null, total: null, error: '' })
+        return
+      }
+
+      setAvailability((prev) => ({ ...prev, loading: true, error: '' }))
+      try {
+        const url = `${API_URL}/api/availability?productId=${encodeURIComponent(item.id)}&startAt=${encodeURIComponent(startIso)}&endAt=${encodeURIComponent(endIso)}`
+        const response = await fetch(url, { signal: controller.signal, cache: 'no-store' })
+        const data = await response.json().catch(() => null)
+        if (!response.ok) {
+          const message = typeof data === 'object' && data && (data.error || data.message)
+            ? String(data.error || data.message)
+            : `HTTP ${response.status}`
+          throw new Error(message)
+        }
+        if (cancelled) return
+        const available = Number.isFinite(Number(data?.available)) ? Number(data.available) : null
+        const total = Number.isFinite(Number(data?.total)) ? Number(data.total) : null
+        setAvailability({ loading: false, available, total, error: '' })
+      } catch (err) {
+        if (cancelled) return
+        if (err?.name === 'AbortError') return
+        setAvailability({ loading: false, available: null, total: null, error: err?.message || 'Ошибка проверки доступности' })
+      }
+    }
+
+    loadAvailability()
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
+  }, [API_URL, endIso, isOpen, item?.id, startIso])
+
+  const maxQuantity = useMemo(() => {
+    const byPeriod = Number.isFinite(Number(availability.available)) ? Number(availability.available) : null
+    const base = byPeriod !== null ? byPeriod : hasAvailabilityV2 ? fallbackAvailableNow : stock
+    return Math.max(0, Math.floor(Number(base) || 0))
+  }, [availability.available, fallbackAvailableNow, hasAvailabilityV2, stock])
+
+  useEffect(() => {
+    // clamp quantity to the max we know
+    if (!isOpen) return
+    if (maxQuantity <= 0) {
+      setQuantity(1)
+      return
+    }
+    setQuantity((prev) => Math.min(Math.max(1, Number(prev) || 1), maxQuantity))
+  }, [isOpen, maxQuantity])
+
+  // Автоматический расчет стоимости при изменении дат/кол-ва
   useEffect(() => {
     if (dateFrom && dateTo && item) {
       const days = Math.ceil((new Date(dateTo) - new Date(dateFrom)) / (1000 * 60 * 60 * 24)) + 1
-      const price = days * (item.pricePerDay || 100)
+      const qty = Number.isFinite(Number(quantity)) ? Math.max(1, Math.floor(Number(quantity))) : 1
+      const price = days * (item.pricePerDay || 100) * qty
       setRentalDays(days)
       setTotalPrice(price)
     } else {
       setRentalDays(0)
       setTotalPrice(0)
     }
-  }, [dateFrom, dateTo, item])
+  }, [dateFrom, dateTo, item, quantity])
 
   if (!isOpen || !item) return null
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (dateFrom && dateTo) {
+      const resolvedQty = Number.isFinite(Number(quantity)) ? Math.max(1, Math.floor(Number(quantity))) : 1
       onSubmit({
         dateFrom,
         dateTo,
         timeFrom,
         timeTo,
+        quantity: resolvedQty,
       })
     }
   }
@@ -83,7 +178,7 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
       return timeFrom >= currentTime
     }
     return true
-  })()
+  })() && (maxQuantity > 0)
 
   // Обработчик изменения даты начала
   const handleDateFromChange = (e) => {
@@ -160,6 +255,28 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
                 min={dateFrom === dateTo ? timeFrom : '00:00'}
                 required
               />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="qty">Количество (свободно: {availability.loading ? '...' : maxQuantity}{Number.isFinite(Number(availability.total)) ? ` из ${availability.total}` : ''})</label>
+              <input
+                type="number"
+                id="qty"
+                value={quantity}
+                min={1}
+                max={Math.max(1, maxQuantity || 1)}
+                onChange={(e) => setQuantity(e.target.value)}
+                required
+                disabled={maxQuantity <= 0}
+              />
+              {availability.error && (
+                <span className="form-error">{availability.error}</span>
+              )}
+              {!availability.error && maxQuantity <= 0 && (
+                <span className="form-error">На выбранный период нет свободных единиц</span>
+              )}
             </div>
           </div>
 

@@ -4,10 +4,11 @@ import { getProductImage } from '../utils/imageLoader'
 export const CartPage = ({ items, onRemove, onEditDate, onClearCart }) => {
   const navigate = useNavigate()
 
-  const totalCost = items.reduce((sum, { item, rentalPeriod }) => {
+  const totalCost = items.reduce((sum, { item, count, rentalPeriod }) => {
     if (!rentalPeriod) return sum
     const days = Math.ceil((new Date(rentalPeriod.dateTo) - new Date(rentalPeriod.dateFrom)) / (1000 * 60 * 60 * 24)) + 1
-    return sum + days * (item.pricePerDay || 100)
+    const qty = Number.isFinite(Number(count)) ? Math.max(1, Math.floor(Number(count))) : 1
+    return sum + days * (item.pricePerDay || 100) * qty
   }, 0)
 
   const handleCheckout = () => {
@@ -50,7 +51,8 @@ export const CartPage = ({ items, onRemove, onEditDate, onClearCart }) => {
                   const days = rentalPeriod 
                     ? Math.ceil((new Date(rentalPeriod.dateTo) - new Date(rentalPeriod.dateFrom)) / (1000 * 60 * 60 * 24)) + 1 
                     : 0
-                  const cost = days * (item.pricePerDay || 100)
+                  const qty = Number.isFinite(Number(count)) ? Math.max(1, Math.floor(Number(count))) : 1
+                  const cost = days * (item.pricePerDay || 100) * qty
                   
                   return (
                     <div key={`${item.name}-${index}`} className="cart-page__item">
@@ -59,6 +61,9 @@ export const CartPage = ({ items, onRemove, onEditDate, onClearCart }) => {
                       </div>
                       <div className="cart-page__item-body">
                         <h3>{item.name}</h3>
+                        <p className="cart-page__item-cost" style={{ marginTop: -8, marginBottom: 10 }}>
+                          Количество: <strong>{qty}</strong>
+                        </p>
                         {rentalPeriod && (
                           <div className="cart-page__item-period">
                             <strong>Период аренды:</strong>
@@ -71,7 +76,7 @@ export const CartPage = ({ items, onRemove, onEditDate, onClearCart }) => {
                           </div>
                         )}
                         <p className="cart-page__item-cost">
-                          {days} дн. × {item.pricePerDay || 100} сом = <strong>{cost} сом</strong>
+                          {days} дн. × {item.pricePerDay || 100} сом × {qty} = <strong>{cost} сом</strong>
                         </p>
                       </div>
                       <div className="cart-page__item-actions">
