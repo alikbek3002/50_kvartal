@@ -4684,7 +4684,9 @@ body {
     overscroll-behavior-x: contain !important;
   }
 
-  .product__thumb img,
+  /* IMPORTANT:
+     Do NOT force product thumbnails to height:auto on mobile,
+     otherwise images won't fill the square preview and выглядят "маленькими" с полями. */
   .modal-media img,
   .slider img {
     max-width: 100% !important;
