@@ -3979,6 +3979,47 @@ body {
   margin: 0;
 }
 
+/* Компактные стили для checkout */
+.checkout-items-list--compact {
+  max-height: 200px;
+  overflow-y: auto;
+  gap: 8px;
+}
+
+.checkout-item--compact {
+  padding: 10px 12px;
+  gap: 10px;
+}
+
+.checkout-item__image--small {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+}
+
+.checkout-item--compact .checkout-item__details h5 {
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+  padding-right: 28px;
+}
+
+.checkout-item--compact .checkout-item__period {
+  font-size: 0.75rem;
+  margin-bottom: 2px;
+}
+
+.checkout-item--compact .checkout-item__cost {
+  font-size: 0.8rem;
+}
+
+.checkout-item--compact .checkout-item__remove {
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+  top: 6px;
+  right: 6px;
+}
+
 .checkout-total {
   display: flex;
   justify-content: space-between;
@@ -4640,25 +4681,64 @@ body {
     font-size: 1.75rem;
   }
 
+  .cart-page__items {
+    gap: 12px;
+    margin-bottom: 24px;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
   .cart-page__item {
-    grid-template-columns: 1fr;
-    gap: 16px;
+    grid-template-columns: 70px 1fr;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 12px;
   }
 
   .cart-page__item-image {
-    width: 100%;
-    height: 200px;
-    margin: 0 auto;
-    max-width: 300px;
+    width: 70px;
+    height: 70px;
+    border-radius: 8px;
+    margin: 0;
+    max-width: none;
+    grid-row: 1 / 3;
+  }
+
+  .cart-page__item-body {
+    min-width: 0;
+  }
+
+  .cart-page__item-body h3 {
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+  }
+
+  .cart-page__item-period {
+    font-size: 0.8rem !important;
+    margin-bottom: 4px !important;
+  }
+
+  .cart-page__item-period p {
+    margin: 2px 0 !important;
+  }
+
+  .cart-page__item-cost {
+    font-size: 0.85rem !important;
   }
 
   .cart-page__item-actions {
     flex-direction: row;
     width: 100%;
+    grid-column: 1 / -1;
+    gap: 8px;
+    margin-top: 4px;
   }
 
   .cart-page__item-actions .button {
     flex: 1;
+    padding: 8px 12px;
+    font-size: 0.85rem;
   }
 
   .cart-page__total {
@@ -4807,18 +4887,34 @@ body {
   background: rgba(0, 0, 0, 0.7);
   z-index: 9999;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  padding: 16px;
+  padding: 0;
 }
 
 .mobile-date-picker__modal {
   background: var(--bg-primary, #121212);
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: 20px 20px 0 0;
+  padding: 8px 20px 24px;
   width: 100%;
-  max-width: 340px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  max-width: 100%;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+  touch-action: none;
+}
+
+.mobile-date-picker__grabber {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 12px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.mobile-date-picker__pill {
+  width: 40px;
+  height: 5px;
+  background: var(--text-muted, #555);
+  border-radius: 3px;
 }
 
 .mobile-date-picker__header {

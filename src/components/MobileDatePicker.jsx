@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSwipeDownToClose } from '../utils/useSwipeDownToClose'
 
 const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 const MONTHS = [
@@ -24,6 +25,12 @@ export const MobileDatePicker = ({ value, onChange, minDate, label, id }) => {
   const [viewDate, setViewDate] = useState(() => {
     const v = parseDate(value)
     return v || new Date()
+  })
+
+  const { targetRef, handleProps } = useSwipeDownToClose({
+    onClose: () => setIsOpen(false),
+    enabled: isOpen,
+    threshold: 80
   })
 
   // Обновляем viewDate когда меняется value
@@ -112,7 +119,11 @@ export const MobileDatePicker = ({ value, onChange, minDate, label, id }) => {
 
       {isOpen && (
         <div className="mobile-date-picker__overlay" onClick={() => setIsOpen(false)}>
-          <div className="mobile-date-picker__modal" onClick={(e) => e.stopPropagation()}>
+          <div className="mobile-date-picker__modal" ref={targetRef} onClick={(e) => e.stopPropagation()}>
+            {/* Grabber для свайпа вниз */}
+            <div className="mobile-date-picker__grabber" {...handleProps}>
+              <div className="mobile-date-picker__pill" />
+            </div>
             <div className="mobile-date-picker__header">
               <button
                 type="button"
