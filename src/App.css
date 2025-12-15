@@ -792,6 +792,46 @@ body {
   display: block;
 }
 
+/* Fullscreen image viewer (mobile-only is controlled from JS) */
+.image-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(0, 0, 0, 0.92);
+  display: grid;
+  place-items: center;
+  padding: 14px;
+}
+
+.image-viewer__img {
+  width: 100%;
+  height: 100%;
+  max-width: 100vw;
+  max-height: 100vh;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 14px;
+  background: #000;
+  touch-action: pinch-zoom;
+}
+
+.image-viewer__close {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--text-primary);
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
 .modal-details {
   display: flex;
   flex-direction: column;
@@ -1992,8 +2032,9 @@ body {
   }
 
   .modal-media {
-    height: 220px;
+    height: clamp(220px, 40vh, 360px);
     border-radius: 14px;
+    background: #000;
   }
 
   .modal-close {
@@ -2271,8 +2312,9 @@ body {
   }
 
   .modal-media {
-    height: 180px;
+    height: clamp(180px, 38vh, 320px);
     border-radius: 12px;
+    background: #000;
   }
 
   .modal-close {
@@ -4639,18 +4681,29 @@ body {
     overscroll-behavior-x: contain !important;
   }
 
-  /* Картинки в модалке можно "auto height", но превью в слайдере должно
-     оставаться квадратным и управляться через object-fit (см. ниже). */
-  .modal-media img,
-  .modal-carousel img {
+  /* Не даём глобальным правилам ломать размеры изображений */
+  .modal-media img {
     max-width: 100% !important;
-    height: auto !important;
   }
 
   /* Внутри слайдера не даём общим правилам перебивать превьюшку */
   .slider .product__thumb img {
     width: 100% !important;
     height: 100% !important;
+  }
+
+  /* В модалке на телефонах показываем фото целиком (без жёсткого crop) */
+  .modal-media {
+    background: #000;
+  }
+
+  .modal-carousel img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    object-position: center;
+    cursor: zoom-in;
+    touch-action: manipulation;
   }
 
   img {

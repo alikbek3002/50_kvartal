@@ -5,6 +5,7 @@ import { useSwipeDownToClose } from '../utils/useSwipeDownToClose'
 
 export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
   const { targetRef, handleProps } = useSwipeDownToClose({ onClose, enabled: Boolean(item) })
+  const [isMobile, setIsMobile] = useState(false)
 
   // Блокировка скролла при открытом модальном окне
   useEffect(() => {
@@ -20,10 +21,34 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
 
   const images = useMemo(() => getProductImages(item), [item])
   const [imageIndex, setImageIndex] = useState(0)
+  const [isViewerOpen, setIsViewerOpen] = useState(false)
 
   useEffect(() => {
     setImageIndex(0)
+    setIsViewerOpen(false)
   }, [item?.id, item?.name])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const apply = () => setIsMobile(Boolean(mq.matches))
+    apply()
+    // Safari < 14 fallback: addListener/removeListener
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', apply)
+      return () => mq.removeEventListener('change', apply)
+    }
+    mq.addListener(apply)
+    return () => mq.removeListener(apply)
+  }, [])
+
+  useEffect(() => {
+    if (!isViewerOpen) return
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setIsViewerOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isViewerOpen])
 
   if (!item) return null
   const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
@@ -40,6 +65,9 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
   const isBookedNow = hasAvailabilityV2
     ? !isOutOfStock && busyUnitsNow > 0
     : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
+
+  const currentImage = images[Math.min(imageIndex, Math.max(0, images.length - 1))]
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div ref={targetRef} className="modal-card" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
@@ -51,7 +79,26 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
         </button>
         <div className="modal-media">
           <div className="modal-carousel">
-            <img src={images[Math.min(imageIndex, images.length - 1)]} alt={item.name} />
+            <img
+              src={currentImage}
+              alt={item.name}
+              onClick={() => {
+                if (!isMobile) return
+                if (!currentImage) return
+                setIsViewerOpen(true)
+              }}
+              onKeyDown={(e) => {
+                if (!isMobile) return
+                if (!currentImage) return
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setIsViewerOpen(true)
+                }
+              }}
+              role={isMobile ? 'button' : undefined}
+              tabIndex={isMobile ? 0 : undefined}
+              aria-label={isMobile ? 'Открыть фото на весь экран' : undefined}
+            />
             {images.length > 1 && (
               <>
                 <button
@@ -75,6 +122,27 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
             )}
           </div>
         </div>
+        {isViewerOpen && isMobile && (
+          <div className="image-viewer" onClick={() => setIsViewerOpen(false)} role="dialog" aria-modal="true">
+            <button
+              className="image-viewer__close"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsViewerOpen(false)
+              }}
+              aria-label="Закрыть фото"
+            >
+              ×
+            </button>
+            <img
+              className="image-viewer__img"
+              src={currentImage}
+              alt={item.name}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
         <div className="modal-details">
           <div className="modal-tags">
             <span className="badge">{formatBrand(item.brand)}</span>
