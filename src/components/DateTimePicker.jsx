@@ -12,6 +12,13 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
   const [rentalDays, setRentalDays] = useState(0)
   const [totalPrice, setTotalPrice] = useState(0)
 
+  const formatLocalDate = (d) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
   // Обновляем текущее время пока открыт календарь (нужно для ограничения "сегодня" по времени)
   useEffect(() => {
     if (!isOpen) return
@@ -153,8 +160,9 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
   }, [dateFrom, dateTo, item, quantity])
 
   const isEditMode = mode === 'edit'
-  const today = now.toISOString().split('T')[0]
-  const currentTime = now.toTimeString().slice(0, 5) // HH:MM
+  // IMPORTANT: use LOCAL date, not UTC (toISOString), иначе на iOS "сегодня" может быть вчера/завтра
+  const today = formatLocalDate(now)
+  const currentTime = now.toTimeString().slice(0, 5) // HH:MM (local)
 
   const normalizeTime = (value) => {
     const v = String(value || '').trim()
