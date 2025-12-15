@@ -541,6 +541,12 @@ body {
   margin-bottom: 6px;
 }
 
+/* В мобильном варианте слайдера показываем превью без обрезки */
+.slider--mobile .product__thumb img {
+  object-fit: contain;
+  object-position: center;
+}
+
 .slider__card-mobile .badge {
   font-size: 0.6rem;
   padding: 2px 6px;
@@ -4684,13 +4690,18 @@ body {
     overscroll-behavior-x: contain !important;
   }
 
-  /* IMPORTANT:
-     Do NOT force product thumbnails to height:auto on mobile,
-     otherwise images won't fill the square preview and выглядят "маленькими" с полями. */
+  /* Картинки в модалке можно "auto height", но превью в слайдере должно
+     оставаться квадратным и управляться через object-fit (см. ниже). */
   .modal-media img,
-  .slider img {
+  .modal-carousel img {
     max-width: 100% !important;
     height: auto !important;
+  }
+
+  /* Внутри слайдера не даём общим правилам перебивать превьюшку */
+  .slider .product__thumb img {
+    width: 100% !important;
+    height: 100% !important;
   }
 
   img {
