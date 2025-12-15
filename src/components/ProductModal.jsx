@@ -4,7 +4,6 @@ import { formatBrand, formatBookedUntil } from '../utils/helpers'
 import { useSwipeDownToClose } from '../utils/useSwipeDownToClose'
 
 export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
-  const { targetRef, handleProps } = useSwipeDownToClose({ onClose, enabled: Boolean(item) })
   const [isMobile, setIsMobile] = useState(false)
 
   // Блокировка скролла при открытом модальном окне
@@ -22,6 +21,13 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
   const images = useMemo(() => getProductImages(item), [item])
   const [imageIndex, setImageIndex] = useState(0)
   const [isViewerOpen, setIsViewerOpen] = useState(false)
+
+  const { targetRef, handleProps } = useSwipeDownToClose({ onClose, enabled: Boolean(item) })
+  const { targetRef: viewerTargetRef, handleProps: viewerHandleProps } = useSwipeDownToClose({
+    onClose: () => setIsViewerOpen(false),
+    enabled: Boolean(item) && isViewerOpen && isMobile,
+    threshold: 90,
+  })
 
   useEffect(() => {
     setImageIndex(0)
@@ -77,7 +83,7 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
         <button className="modal-close" onClick={onClose} aria-label="Закрыть" type="button">
           ×
         </button>
-        <div className="modal-media">
+        <div className="modal-media" {...(isMobile ? handleProps : {})}>
           <div className="modal-carousel">
             <img
               src={currentImage}
@@ -124,6 +130,9 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
         </div>
         {isViewerOpen && isMobile && (
           <div className="image-viewer" onClick={() => setIsViewerOpen(false)} role="dialog" aria-modal="true">
+            <div className="image-viewer__grabber" aria-hidden="true" {...viewerHandleProps}>
+              <div className="image-viewer__pill" />
+            </div>
             <button
               className="image-viewer__close"
               type="button"
@@ -137,9 +146,11 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
             </button>
             <img
               className="image-viewer__img"
+              ref={viewerTargetRef}
               src={currentImage}
               alt={item.name}
               onClick={(e) => e.stopPropagation()}
+              {...viewerHandleProps}
             />
           </div>
         )}
