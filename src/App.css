@@ -524,41 +524,12 @@ body {
   scroll-snap-align: start;
 }
 
-.slider__card-mobile .product {
-  padding: 8px;
-  gap: 6px;
-  min-height: auto;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-.slider__card-mobile .product h3 {
-  font-size: 0.85rem;
-  line-height: 1.2;
-}
-
-.slider__card-mobile .product__thumb {
-  aspect-ratio: 1 / 1;
-  margin-bottom: 6px;
-}
-
-/* В мобильном варианте слайдера показываем превью без обрезки */
-.slider--mobile .product__thumb img {
-  object-fit: contain;
-  object-position: center;
-}
-
-.slider__card-mobile .badge {
-  font-size: 0.6rem;
-  padding: 2px 6px;
-}
-
-.slider__card-mobile .product__description {
-  display: none;
-}
-
-.slider__card-mobile .button {
-  padding: 8px 12px;
-  font-size: 0.75rem;
+/* На телефонах делаем размер карточек как в каталоге (2 в экран) */
+@media (max-width: 767px) {
+  .slider__card-mobile {
+    /* 16px + 16px padding контейнера + 12px gap между карточками = 44px */
+    flex: 0 0 calc((100vw - 44px) / 2);
+  }
 }
 
 .product {
@@ -4383,33 +4354,11 @@ body {
     width: 100%;
   }
 
-  /* Ещё меньше карточки для маленьких экранов */
-  .slider__card-mobile {
-    flex: 0 0 190px;
-  }
-
   /* Меньше надпись "В корзине" для маленьких экранов */
   .product__in-cart-badge {
     padding: 6px 10px;
     font-size: 0.65rem;
     border-radius: 6px;
-  }
-
-  .slider__card-mobile .product {
-    padding: 6px;
-  }
-
-  .slider__card-mobile .product h3 {
-    font-size: 0.8rem;
-  }
-
-  .slider__card-mobile .product__price {
-    font-size: 0.85rem;
-  }
-
-  .slider__card-mobile .button {
-    padding: 6px 10px;
-    font-size: 0.7rem;
   }
 }
 
