@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { API_URL } from '../config'
+import { MobileDatePicker } from './MobileDatePicker'
 
 export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existingPeriod }) => {
   const [dateFrom, setDateFrom] = useState('')
@@ -202,6 +203,10 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
   const handleSubmit = (e) => {
     e.preventDefault()
     if (dateFrom && dateTo) {
+      // Финальная защита от прошлых дат/времени (на случай если iOS пропустило)
+      if (!isEditMode && dateFrom < today) return
+      if (!isEditMode && dateTo < today) return
+      if (dateTo < dateFrom) return
       if (!isEditMode && dateFrom === today && timeFrom < currentTime) return
       if (dateFrom === dateTo && timeTo < timeFrom) return
       const resolvedQty = Number.isFinite(Number(quantity)) ? Math.max(1, Math.floor(Number(quantity))) : 1
@@ -225,6 +230,10 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
 
   // Проверка валидности формы с учетом времени
   const isFormValid = dateFrom && dateTo && (() => {
+    // Нельзя выбрать прошлую дату
+    if (!isEditMode && dateFrom < today) return false
+    if (!isEditMode && dateTo < today) return false
+    if (dateTo < dateFrom) return false
     if (!isEditMode && dateFrom === today) {
       // Если выбрана сегодняшняя дата, проверяем что время не прошло
       return timeFrom >= currentTime
@@ -235,13 +244,35 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
 
   // Обработчик изменения даты начала
   const handleDateFromChange = (e) => {
-    const newDateFrom = e.target.value
+    let newDateFrom = e.target.value
+    
+    // iOS Safari часто игнорирует min — жёстко не даём выбрать прошлую дату
+    if (!isEditMode && newDateFrom && newDateFrom < today) {
+      newDateFrom = today
+    }
     setDateFrom(newDateFrom)
     
     // Если выбрана сегодняшняя дата, установить минимальное время
     if (!isEditMode && newDateFrom === today && timeFrom < currentTime) {
       setTimeFrom(currentTime)
     }
+    
+    // Если dateTo раньше новой dateFrom — подтянуть
+    if (dateTo && newDateFrom > dateTo) {
+      setDateTo(newDateFrom)
+    }
+  }
+  
+  // Обработчик изменения даты окончания
+  const handleDateToChange = (e) => {
+    let newDateTo = e.target.value
+    
+    // iOS Safari часто игнорирует min — жёстко не даём выбрать дату раньше dateFrom или today
+    const minDate = dateFrom || today
+    if (!isEditMode && newDateTo && newDateTo < minDate) {
+      newDateTo = minDate
+    }
+    setDateTo(newDateTo)
   }
 
   const handleTimeFromChange = (e) => {
@@ -284,26 +315,62 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
         <form onSubmit={handleSubmit} className="datetime-picker__form">
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="date-from">Дата начала</label>
-              <input
-                type="date"
-                id="date-from"
+              {/* Десктоп: обычный input */}
+              <div className="desktop-date-input">
+                <label htmlFor="date-from">Дата начала</label>
+                <input
+                  type="date"
+                  id="date-from"
+                  value={dateFrom}
+                  onChange={handleDateFromChange}
+                  min={today}
+                  required
+                />
+              </div>
+              {/* Мобильный: кастомный календарь */}
+              <MobileDatePicker
+                id="date-from-mobile"
+                label="Дата начала"
                 value={dateFrom}
-                onChange={handleDateFromChange}
-                min={today}
-                required
+                onChange={(val) => {
+                  setDateFrom(val)
+                  if (!isEditMode && val === today && timeFrom < currentTime) {
+                    setTimeFrom(currentTime)
+                  }
+                  if (dateTo && val > dateTo) {
+                    setDateTo(val)
+                  }
+                }}
+                minDate={isEditMode ? undefined : today}
               />
+              {!isEditMode && dateFrom && dateFrom < today && (
+                <span className="form-error">Выберите сегодня или позже</span>
+              )}
             </div>
             <div className="form-group">
-              <label htmlFor="date-to">Дата окончания</label>
-              <input
-                type="date"
-                id="date-to"
+              {/* Десктоп: обычный input */}
+              <div className="desktop-date-input">
+                <label htmlFor="date-to">Дата окончания</label>
+                <input
+                  type="date"
+                  id="date-to"
+                  value={dateTo}
+                  onChange={handleDateToChange}
+                  min={dateFrom || today}
+                  required
+                />
+              </div>
+              {/* Мобильный: кастомный календарь */}
+              <MobileDatePicker
+                id="date-to-mobile"
+                label="Дата окончания"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                min={dateFrom || today}
-                required
+                onChange={setDateTo}
+                minDate={isEditMode ? undefined : (dateFrom || today)}
               />
+              {!isEditMode && dateTo && dateTo < (dateFrom || today) && (
+                <span className="form-error">Дата окончания не может быть раньше начала</span>
+              )}
             </div>
           </div>
           
