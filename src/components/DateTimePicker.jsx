@@ -6,10 +6,19 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
   const [dateTo, setDateTo] = useState('')
   const [timeFrom, setTimeFrom] = useState('09:00')
   const [timeTo, setTimeTo] = useState('21:00')
+  const [now, setNow] = useState(() => new Date())
   const [quantity, setQuantity] = useState(1)
   const [availability, setAvailability] = useState({ loading: false, available: null, total: null, error: '' })
   const [rentalDays, setRentalDays] = useState(0)
   const [totalPrice, setTotalPrice] = useState(0)
+
+  // Обновляем текущее время пока открыт календарь (нужно для ограничения "сегодня" по времени)
+  useEffect(() => {
+    if (!isOpen) return
+    setNow(new Date())
+    const id = setInterval(() => setNow(new Date()), 30 * 1000)
+    return () => clearInterval(id)
+  }, [isOpen])
 
   // Заполнение форм существующими данными при редактировании
   useEffect(() => {
@@ -145,9 +154,47 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
 
   if (!isOpen || !item) return null
 
+  const isEditMode = mode === 'edit'
+  const today = now.toISOString().split('T')[0]
+  const currentTime = now.toTimeString().slice(0, 5) // HH:MM
+
+  const normalizeTime = (value) => {
+    const v = String(value || '').trim()
+    // Expect "HH:MM"; if something else slips in, return empty so we can ignore it.
+    return /^\d{2}:\d{2}$/.test(v) ? v : ''
+  }
+
+  const maxTime = (a, b) => (a && b ? (a >= b ? a : b) : a || b)
+
+  const minTimeFrom = !isEditMode && dateFrom === today ? currentTime : '00:00'
+  const minTimeTo = dateFrom && dateTo && dateFrom === dateTo ? timeFrom : '00:00'
+
+  // Жёстко не даём выставить прошедшее время для сегодняшней даты (кроме edit)
+  useEffect(() => {
+    if (!isOpen) return
+
+    const tf = normalizeTime(timeFrom)
+    const tt = normalizeTime(timeTo)
+
+    if (!isEditMode && dateFrom === today && tf && tf < currentTime) {
+      setTimeFrom(currentTime)
+      // если возврат в тот же день — тоже подтянем
+      if (dateTo === dateFrom && (tt && tt < currentTime)) {
+        setTimeTo(currentTime)
+      }
+      return
+    }
+
+    if (dateTo && dateFrom && dateTo === dateFrom && tf && tt && tt < tf) {
+      setTimeTo(tf)
+    }
+  }, [currentTime, dateFrom, dateTo, isEditMode, isOpen, timeFrom, timeTo, today])
+
   const handleSubmit = (e) => {
     e.preventDefault()
     if (dateFrom && dateTo) {
+      if (!isEditMode && dateFrom === today && timeFrom < currentTime) return
+      if (dateFrom === dateTo && timeTo < timeFrom) return
       const resolvedQty = Number.isFinite(Number(quantity)) ? Math.max(1, Math.floor(Number(quantity))) : 1
       onSubmit({
         dateFrom,
@@ -159,13 +206,9 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
     }
   }
 
-  const now = new Date()
-  const today = now.toISOString().split('T')[0]
-  const currentTime = now.toTimeString().slice(0, 5) // HH:MM формат
-  
   // Получение минимального времени для сегодня
   const getMinTime = () => {
-    if (dateFrom === today) {
+    if (!isEditMode && dateFrom === today) {
       return currentTime
     }
     return '00:00'
@@ -173,10 +216,11 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
 
   // Проверка валидности формы с учетом времени
   const isFormValid = dateFrom && dateTo && (() => {
-    if (dateFrom === today) {
+    if (!isEditMode && dateFrom === today) {
       // Если выбрана сегодняшняя дата, проверяем что время не прошло
       return timeFrom >= currentTime
     }
+    if (dateFrom === dateTo) return timeTo >= timeFrom
     return true
   })() && (maxQuantity > 0)
 
@@ -186,11 +230,35 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
     setDateFrom(newDateFrom)
     
     // Если выбрана сегодняшняя дата, установить минимальное время
-    if (newDateFrom === today && timeFrom < currentTime) {
-      // Округляем до следующего часа
-      const nextHour = String(now.getHours() + 1).padStart(2, '0')
-      setTimeFrom(`${nextHour}:00`)
+    if (!isEditMode && newDateFrom === today && timeFrom < currentTime) {
+      setTimeFrom(currentTime)
     }
+  }
+
+  const handleTimeFromChange = (e) => {
+    const next = normalizeTime(e.target.value) || e.target.value
+    if (!isEditMode && dateFrom === today) {
+      const clamped = maxTime(normalizeTime(next), currentTime) || next
+      setTimeFrom(clamped)
+      if (dateTo === dateFrom && normalizeTime(timeTo) && normalizeTime(timeTo) < clamped) {
+        setTimeTo(clamped)
+      }
+      return
+    }
+    setTimeFrom(next)
+    if (dateTo === dateFrom && normalizeTime(timeTo) && normalizeTime(timeTo) < next) {
+      setTimeTo(next)
+    }
+  }
+
+  const handleTimeToChange = (e) => {
+    const next = normalizeTime(e.target.value) || e.target.value
+    if (dateTo === dateFrom) {
+      const clamped = maxTime(normalizeTime(next), normalizeTime(timeFrom)) || next
+      setTimeTo(clamped)
+      return
+    }
+    setTimeTo(next)
   }
 
   return (
@@ -237,8 +305,8 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
                 type="time"
                 id="time-from"
                 value={timeFrom}
-                onChange={(e) => setTimeFrom(e.target.value)}
-                min={getMinTime()}
+                onChange={handleTimeFromChange}
+                min={minTimeFrom || getMinTime()}
                 required
               />
               {dateFrom === today && timeFrom < currentTime && (
@@ -251,8 +319,8 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
                 type="time"
                 id="time-to"
                 value={timeTo}
-                onChange={(e) => setTimeTo(e.target.value)}
-                min={dateFrom === dateTo ? timeFrom : '00:00'}
+                onChange={handleTimeToChange}
+                min={minTimeTo}
                 required
               />
             </div>

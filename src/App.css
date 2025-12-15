@@ -2047,8 +2047,8 @@ body {
     display: flex;
   }
 
-  /* Крестик всегда виден при скролле модалки */
-  .modal-close {
+  /* Крестик всегда виден при скролле модалки товара */
+  .modal-card .modal-close {
     position: sticky;
     top: calc(10px + env(safe-area-inset-top, 0px));
     right: auto;
@@ -2058,6 +2058,14 @@ body {
     width: 44px;
     height: 44px;
     border-radius: 14px;
+  }
+
+  /* Календарь (DateTimePicker): крестик справа, не sticky */
+  .datetime-picker .modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    left: auto;
   }
 
   /* Свайп вниз можно делать по области фото */
