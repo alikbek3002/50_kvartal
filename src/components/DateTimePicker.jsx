@@ -152,8 +152,6 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
     }
   }, [dateFrom, dateTo, item, quantity])
 
-  if (!isOpen || !item) return null
-
   const isEditMode = mode === 'edit'
   const today = now.toISOString().split('T')[0]
   const currentTime = now.toTimeString().slice(0, 5) // HH:MM
@@ -171,7 +169,8 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
 
   // Жёстко не даём выставить прошедшее время для сегодняшней даты (кроме edit)
   useEffect(() => {
-    if (!isOpen) return
+    // IMPORTANT: hooks must be called unconditionally; guard inside the effect.
+    if (!isOpen || !item) return
 
     const tf = normalizeTime(timeFrom)
     const tt = normalizeTime(timeTo)
@@ -189,6 +188,8 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
       setTimeTo(tf)
     }
   }, [currentTime, dateFrom, dateTo, isEditMode, isOpen, timeFrom, timeTo, today])
+
+  if (!isOpen || !item) return null
 
   const handleSubmit = (e) => {
     e.preventDefault()
