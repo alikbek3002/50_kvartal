@@ -51,6 +51,8 @@ const emptyForm = {
   pricePerDay: 100,
   imageUrls: [],
   description: '',
+  equipment: '',
+  specs: '',
   isActive: true,
 }
 
@@ -274,6 +276,21 @@ export default function App() {
       : typeof p?.imageUrl === 'string' && p.imageUrl.trim()
         ? [p.imageUrl.trim()]
         : []
+    
+    // Конвертируем equipment массив в строку для текстового поля
+    const equipmentStr = Array.isArray(p?.equipment)
+      ? p.equipment.join('\n')
+      : typeof p?.equipment === 'string'
+        ? p.equipment
+        : ''
+    
+    // Конвертируем specs объект в строку для текстового поля
+    const specsStr = p?.specs && typeof p.specs === 'object'
+      ? Object.entries(p.specs).map(([k, v]) => `${k}: ${v}`).join('\n')
+      : typeof p?.specs === 'string'
+        ? p.specs
+        : ''
+
     setForm({
       id: p.id,
       name: p.name || '',
@@ -283,6 +300,8 @@ export default function App() {
       pricePerDay: Number.isFinite(p.pricePerDay) ? p.pricePerDay : 100,
       imageUrls: resolvedImageUrls,
       description: p.description || '',
+      equipment: equipmentStr,
+      specs: specsStr,
       isActive: p.isActive ?? true,
     })
     setError('')
@@ -493,6 +512,27 @@ export default function App() {
     return data?.url || ''
   }
 
+  const parseEquipment = (str) => {
+    if (!str || typeof str !== 'string') return []
+    return str.split('\n').map(s => s.trim()).filter(Boolean)
+  }
+
+  const parseSpecs = (str) => {
+    if (!str || typeof str !== 'string') return null
+    const lines = str.split('\n').map(s => s.trim()).filter(Boolean)
+    if (lines.length === 0) return null
+    const obj = {}
+    for (const line of lines) {
+      const colonIdx = line.indexOf(':')
+      if (colonIdx > 0) {
+        const key = line.slice(0, colonIdx).trim()
+        const value = line.slice(colonIdx + 1).trim()
+        if (key) obj[key] = value
+      }
+    }
+    return Object.keys(obj).length > 0 ? obj : null
+  }
+
   const saveProduct = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -509,6 +549,8 @@ export default function App() {
         imageUrl: Array.isArray(form.imageUrls) && form.imageUrls[0] ? form.imageUrls[0] : null,
         imageUrls: Array.isArray(form.imageUrls) ? form.imageUrls : [],
         description: form.description.trim() || null,
+        equipment: parseEquipment(form.equipment),
+        specs: parseSpecs(form.specs),
         isActive: Boolean(form.isActive),
       }
 
@@ -774,7 +816,32 @@ export default function App() {
 
                   <div className="form-group">
                     <label>Описание</label>
-                    <input value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} />
+                    <textarea
+                      value={form.description}
+                      onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                      rows={3}
+                      placeholder="Подробное описание товара..."
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Комплектация (каждый пункт с новой строки)</label>
+                    <textarea
+                      value={form.equipment}
+                      onChange={(e) => setForm((prev) => ({ ...prev, equipment: e.target.value }))}
+                      rows={4}
+                      placeholder="Основной блок&#10;Кабель питания&#10;Сумка для переноски&#10;Инструкция"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Характеристики (Название: значение, каждая с новой строки)</label>
+                    <textarea
+                      value={form.specs}
+                      onChange={(e) => setForm((prev) => ({ ...prev, specs: e.target.value }))}
+                      rows={4}
+                      placeholder="Мощность: 600 Вт&#10;Цветовая температура: 2700K - 6500K&#10;CRI: 95+&#10;Вес: 3.2 кг"
+                    />
                   </div>
 
                   <div className="form-group">

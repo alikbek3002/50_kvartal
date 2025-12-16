@@ -152,6 +152,10 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT
 ALTER TABLE products ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
+-- Новые поля для вкладок в модальном окне товара
+ALTER TABLE products ADD COLUMN IF NOT EXISTS equipment JSONB;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS specs JSONB;
+
 -- Индексы
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
 CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at DESC);

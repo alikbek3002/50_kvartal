@@ -86,19 +86,25 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
           </div>
 
           <div className="catalog__chips">
+            <span className="catalog__chips-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+              </svg>
+              Категории:
+            </span>
             <button
               className={`chip ${!selectedCategory ? 'chip--active' : ''}`}
               onClick={() => setSelectedCategory(null)}
             >
-              Все товары · {items.length} шт.
+              Все
             </button>
-            {categoryChips.map(([category, amount]) => (
+            {categoryChips.map(([category]) => (
               <button
                 className={`chip ${selectedCategory === category ? 'chip--active' : ''}`}
                 key={category}
                 onClick={() => setSelectedCategory(category)}
               >
-                {category} · {amount} шт.
+                {category}
               </button>
             ))}
           </div>

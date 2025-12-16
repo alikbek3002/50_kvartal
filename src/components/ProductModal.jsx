@@ -5,6 +5,7 @@ import { useSwipeDownToClose } from '../utils/useSwipeDownToClose'
 
 export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
   const [isMobile, setIsMobile] = useState(false)
+  const [activeTab, setActiveTab] = useState('specs')
 
   // Блокировка скролла при открытом модальном окне
   useEffect(() => {
@@ -17,6 +18,11 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
       document.body.classList.remove('no-scroll')
     }
   }, [item])
+
+  // Сбрасываем вкладку при смене товара
+  useEffect(() => {
+    setActiveTab('specs')
+  }, [item?.id, item?.name])
 
   const images = useMemo(() => getProductImages(item), [item])
   const [imageIndex, setImageIndex] = useState(0)
@@ -178,24 +184,109 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
             </span>
             <span className="modal-price">{item.pricePerDay || 100} сом/сутки</span>
           </div>
-          <p className="modal-copy">
-            Устройство проходит сервис перед выдачей: проверяем крепёж, оптику и комплект кабелей. Сообщите даты и мы подготовим
-            оборудование.
-          </p>
-          <dl className="modal-specs">
-            <div>
-              <dt>Категория</dt>
-              <dd>{item.category}</dd>
-            </div>
-            <div>
-              <dt>Бренд</dt>
-              <dd>{formatBrand(item.brand)}</dd>
-            </div>
-            <div>
-              <dt>Цена аренды</dt>
-              <dd>{item.pricePerDay || 100} сом/сутки</dd>
-            </div>
-          </dl>
+
+          {/* Tabs */}
+          {!isMobile && (
+            <>
+              <div className="modal-tabs">
+                <button
+                  type="button"
+                  className={`modal-tab ${activeTab === 'specs' ? 'modal-tab--active' : ''}`}
+                  onClick={() => setActiveTab('specs')}
+                >
+                  Характеристики
+                </button>
+                <button
+                  type="button"
+                  className={`modal-tab ${activeTab === 'description' ? 'modal-tab--active' : ''}`}
+                  onClick={() => setActiveTab('description')}
+                >
+                  Описание
+                </button>
+                <button
+                  type="button"
+                  className={`modal-tab ${activeTab === 'equipment' ? 'modal-tab--active' : ''}`}
+                  onClick={() => setActiveTab('equipment')}
+                >
+                  Комплектация
+                </button>
+              </div>
+
+              <div className="modal-tab-content">
+                {activeTab === 'specs' && (
+                  <dl className="modal-specs">
+                    <div>
+                      <dt>Категория</dt>
+                      <dd>{item.category}</dd>
+                    </div>
+                    <div>
+                      <dt>Бренд</dt>
+                      <dd>{formatBrand(item.brand)}</dd>
+                    </div>
+                    <div>
+                      <dt>Цена аренды</dt>
+                      <dd>{item.pricePerDay || 100} сом/сутки</dd>
+                    </div>
+                    {item.specs && typeof item.specs === 'object' && Object.entries(item.specs).map(([key, value]) => (
+                      <div key={key}>
+                        <dt>{key}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+
+                {activeTab === 'description' && (
+                  <div>
+                    {item.description ? (
+                      <p>{item.description}</p>
+                    ) : (
+                      <p className="modal-tab-content--empty">Описание пока не добавлено</p>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'equipment' && (
+                  <div>
+                    {item.equipment && item.equipment.length > 0 ? (
+                      <ul className="modal-equipment-list">
+                        {item.equipment.map((eq, idx) => (
+                          <li key={idx}>{eq}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="modal-tab-content--empty">Комплектация пока не указана</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Mobile: show simple content without tabs */}
+          {isMobile && (
+            <>
+              <p className="modal-copy">
+                Устройство проходит сервис перед выдачей: проверяем крепёж, оптику и комплект кабелей. Сообщите даты и мы подготовим
+                оборудование.
+              </p>
+              <dl className="modal-specs">
+                <div>
+                  <dt>Категория</dt>
+                  <dd>{item.category}</dd>
+                </div>
+                <div>
+                  <dt>Бренд</dt>
+                  <dd>{formatBrand(item.brand)}</dd>
+                </div>
+                <div>
+                  <dt>Цена аренды</dt>
+                  <dd>{item.pricePerDay || 100} сом/сутки</dd>
+                </div>
+              </dl>
+            </>
+          )}
+
           <div className="modal-actions">
             <button
               className="button primary modal-cta"

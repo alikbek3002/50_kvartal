@@ -277,6 +277,8 @@ app.get('/api/admin/products', requireAdmin, async (req, res) => {
         p.image_url AS "imageUrl",
         p.image_urls AS "imageUrls",
         p.price_per_day AS "pricePerDay",
+        p.equipment AS "equipment",
+        p.specs AS "specs",
         p.is_active AS "isActive",
         p.created_at AS "createdAt",
         p.updated_at AS "updatedAt",
@@ -654,6 +656,8 @@ app.post('/api/products', requireAdmin, async (req, res) => {
       price_per_day,
       pricePerDay,
       price,
+      equipment,
+      specs,
       is_active,
       isActive,
     } = req.body;
@@ -664,11 +668,13 @@ app.post('/api/products', requireAdmin, async (req, res) => {
     const resolvedPricePerDay = price_per_day ?? pricePerDay ?? price ?? 100;
     const resolvedStock = stock ?? 0;
     const resolvedIsActive = is_active ?? isActive ?? true;
+    const resolvedEquipment = Array.isArray(equipment) ? equipment : null;
+    const resolvedSpecs = specs && typeof specs === 'object' ? specs : null;
     
     await client.query('BEGIN');
     const result = await client.query(
-      `INSERT INTO products (name, description, category, brand, stock, image_url, image_urls, price_per_day, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)
+      `INSERT INTO products (name, description, category, brand, stock, image_url, image_urls, price_per_day, equipment, specs, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9::jsonb, $10::jsonb, $11)
        RETURNING *`,
       [
         name,
@@ -679,6 +685,8 @@ app.post('/api/products', requireAdmin, async (req, res) => {
         imageUrlPrimary,
         JSON.stringify(resolvedImageUrls),
         resolvedPricePerDay,
+        resolvedEquipment ? JSON.stringify(resolvedEquipment) : null,
+        resolvedSpecs ? JSON.stringify(resolvedSpecs) : null,
         Boolean(resolvedIsActive),
       ]
     );
@@ -720,6 +728,8 @@ app.get('/api/products', async (req, res) => {
         p.image_url AS "imageUrl",
         p.image_urls AS "imageUrls",
         p.price_per_day AS "pricePerDay",
+        p.equipment AS "equipment",
+        p.specs AS "specs",
         p.created_at AS "createdAt",
         p.updated_at AS "updatedAt",
         COALESCE(s.total_units, 0) AS "totalUnits",
@@ -1206,6 +1216,8 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
       price_per_day,
       pricePerDay,
       price,
+      equipment,
+      specs,
       is_active,
       isActive,
     } = req.body;
@@ -1216,6 +1228,8 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
     const resolvedPricePerDay = price_per_day ?? pricePerDay ?? price ?? 100;
     const resolvedStock = stock ?? 0;
     const resolvedIsActive = is_active ?? isActive;
+    const resolvedEquipment = Array.isArray(equipment) ? equipment : null;
+    const resolvedSpecs = specs && typeof specs === 'object' ? specs : null;
     
     await client.query('BEGIN');
     const result = await client.query(
@@ -1229,9 +1243,11 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
          image_url = $6,
          image_urls = $7::jsonb,
          price_per_day = $8,
-         is_active = COALESCE($9, is_active),
+         equipment = $9::jsonb,
+         specs = $10::jsonb,
+         is_active = COALESCE($11, is_active),
          updated_at = NOW()
-       WHERE id = $10
+       WHERE id = $12
        RETURNING *`,
       [
         name,
@@ -1242,6 +1258,8 @@ app.put('/api/products/:id', requireAdmin, async (req, res) => {
         imageUrlPrimary,
         JSON.stringify(resolvedImageUrls),
         resolvedPricePerDay,
+        resolvedEquipment ? JSON.stringify(resolvedEquipment) : null,
+        resolvedSpecs ? JSON.stringify(resolvedSpecs) : null,
         resolvedIsActive,
         id,
       ]
