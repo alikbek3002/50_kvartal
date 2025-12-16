@@ -1500,7 +1500,7 @@ app.delete('/api/admin/bookings/:id', requireAdmin, requireDbReady, async (req, 
   }
 });
 
-// Health check
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
