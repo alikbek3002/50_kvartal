@@ -136,7 +136,37 @@ export default function App() {
   useEffect(() => {
     if (!productEditorOpen) return
     setEditorImageIndex(0)
+  }, [productEditorOpen])
+
+  useEffect(() => {
+    if (!productEditorOpen) return
+    setEditorImageIndex((prev) => {
+      if (editorImages.length <= 0) return 0
+      return Math.max(0, Math.min(prev, editorImages.length - 1))
+    })
   }, [productEditorOpen, editorImages.length])
+
+  const removeEditorImageAt = (index) => {
+    const idx = Number(index)
+    if (!Number.isFinite(idx) || idx < 0) return
+
+    setForm((prev) => {
+      const list = Array.isArray(prev?.imageUrls) ? prev.imageUrls : []
+      const normalized = list.map((u) => String(u || '').trim()).filter(Boolean).slice(0, 12)
+      if (idx >= normalized.length) return prev
+      const next = normalized.filter((_, i) => i !== idx)
+      return { ...prev, imageUrls: next }
+    })
+
+    setEditorImageIndex((current) => {
+      const oldLen = editorImages.length
+      const newLen = Math.max(0, oldLen - 1)
+      if (newLen <= 0) return 0
+      if (idx < current) return current - 1
+      if (idx === current) return Math.min(current, newLen - 1)
+      return Math.max(0, Math.min(current, newLen - 1))
+    })
+  }
 
   const [bookingProduct, setBookingProduct] = useState(null)
   const [bookingDateFrom, setBookingDateFrom] = useState('')
@@ -883,6 +913,18 @@ export default function App() {
                           alt={form.name || 'Фото товара'}
                           loading="lazy"
                         />
+
+                        <button
+                          type="button"
+                          className="product-editor__remove"
+                          onClick={() => removeEditorImageAt(Math.min(editorImageIndex, editorImages.length - 1))}
+                          aria-label="Удалить текущее фото"
+                          title="Удалить фото"
+                          disabled={loading}
+                        >
+                          ×
+                        </button>
+
                         {editorImages.length > 1 && (
                           <>
                             <button
@@ -912,21 +954,36 @@ export default function App() {
                     )}
                   </div>
 
-                  {editorImages.length > 1 && (
+                  {editorImages.length > 0 && (
                     <div className="product-editor__thumbs" role="tablist" aria-label="Миниатюры">
                       {editorImages.map((u, idx) => {
                         const active = idx === editorImageIndex
                         return (
-                          <button
-                            key={`${u}-${idx}`}
-                            type="button"
-                            className={`product-editor__thumb ${active ? 'is-active' : ''}`}
-                            onClick={() => setEditorImageIndex(idx)}
-                            aria-label={`Фото ${idx + 1}`}
-                            aria-current={active ? 'true' : 'false'}
-                          >
-                            <img src={resolveAdminImageUrl(u)} alt="" loading="lazy" />
-                          </button>
+                          <div className="product-editor__thumb-item" key={`${u}-${idx}`}>
+                            <button
+                              type="button"
+                              className={`product-editor__thumb ${active ? 'is-active' : ''}`}
+                              onClick={() => setEditorImageIndex(idx)}
+                              aria-label={`Фото ${idx + 1}`}
+                              aria-current={active ? 'true' : 'false'}
+                            >
+                              <img src={resolveAdminImageUrl(u)} alt="" loading="lazy" />
+                            </button>
+                            <button
+                              type="button"
+                              className="product-editor__thumb-remove"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                removeEditorImageAt(idx)
+                              }}
+                              aria-label={`Удалить фото ${idx + 1}`}
+                              title="Удалить"
+                              disabled={loading}
+                            >
+                              ×
+                            </button>
+                          </div>
                         )
                       })}
                     </div>
