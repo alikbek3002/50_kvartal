@@ -37,7 +37,13 @@ export const Footer = () => (
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
               <circle cx="12" cy="10" r="3" />
             </svg>
-            <span>Бишкек</span>
+            <a
+              href="https://2gis.kg/bishkek/geo/15763234350980545/74.515023,42.833620"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Бишкек, Улица Айдын-Кол, 45
+            </a>
           </li>
         </ul>
       </div>
