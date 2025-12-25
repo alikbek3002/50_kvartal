@@ -156,6 +156,10 @@ function deriveCategoryMeta(product) {
   const rawCategory = normalizeKey(product?.category);
   const nameKey = normalizeNameKey(product?.name);
 
+  if (!rawCategory) {
+    return { mainCategory: null, subCategory: null, color: null };
+  }
+
   // Strict mapping by DB category → 3 main categories.
   if (rawCategory === 'освещение') {
     return { mainCategory: MAIN_CATEGORY_LIGHT, subCategory: null, color: 'blue' };
@@ -189,7 +193,7 @@ function deriveCategoryMeta(product) {
   }
 
   // Fallback
-  return { mainCategory: MAIN_CATEGORY_OPERATOR, subCategory: null, color: 'green' };
+  return { mainCategory: null, subCategory: null, color: null };
 }
 
 function uploadImageMiddleware(req, res, next) {

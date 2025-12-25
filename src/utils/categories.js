@@ -81,6 +81,10 @@ export function deriveCategoryMeta(item) {
   const rawCategory = toKey(item?.category)
   const nameKey = normalizeNameKey(item?.name)
 
+  if (!rawCategory) {
+    return { mainCategory: '', subCategory: '' }
+  }
+
   // Strict mapping by existing DB category → 3 main categories.
   if (rawCategory === 'освещение') {
     return { mainCategory: MAIN_CATEGORY_LIGHT, subCategory: '' }
@@ -115,7 +119,7 @@ export function deriveCategoryMeta(item) {
   }
 
   // Fallback: still keep the app usable.
-  return { mainCategory: MAIN_CATEGORY_OPERATOR, subCategory: '' }
+  return { mainCategory: '', subCategory: '' }
 }
 
 export function getEffectiveMainCategory(item) {

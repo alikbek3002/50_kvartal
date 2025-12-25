@@ -113,7 +113,6 @@ function App() {
   const categoryChips = useMemo(() => {
     return MAIN_CATEGORIES
       .map((category) => [category, categoryTotals?.[category] || 0])
-      .filter(([, count]) => count > 0)
   }, [categoryTotals])
 
   const cartCount = cartItems.reduce((sum, entry) => sum + entry.count, 0)
