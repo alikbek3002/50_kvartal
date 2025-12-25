@@ -86,6 +86,112 @@ const uploadDb = multer({
   fileFilter: imageFileFilter,
 });
 
+const MAIN_CATEGORY_OPERATOR = 'Операторское оборудование';
+const MAIN_CATEGORY_LIGHT = 'Свет';
+const MAIN_CATEGORY_GRIP = 'Грип и крепёж';
+
+const YELLOW_SUBCATEGORY_STANDS = 'Стенды (Систенты)';
+const YELLOW_SUBCATEGORY_CLAMPS = 'Зажимы';
+const YELLOW_SUBCATEGORY_FROST_FRAMES = 'Фрост рамы';
+
+function normalizeText(value) {
+  return String(value ?? '').trim();
+}
+
+function normalizeKey(value) {
+  return normalizeText(value).toLowerCase();
+}
+
+function normalizeNameKey(value) {
+  return normalizeKey(value)
+    .replace(/["'“”«»]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const YELLOW_STANDS_KEYS = new Set(
+  [
+    'Kupo Master High Cine Stand 543M (A100)',
+    'Kupo C-Stand 40',
+    'Kupo C-Stand 20',
+    'Kupo Autopole 1 - 1.70m',
+    'Kupo Autopole 2.10m',
+    'Kupo KCP-636B Big Boom (журавль/выносная штанга)',
+    // Variants in current catalog/DB
+    'Kupo KCP-636B Big Boom',
+    'Kupo CT-20M 20 inc h C-Stand (KUP-CT-20M)',
+    'Распорка автополе Kupo KP-S1017PD Kupole',
+    'Avenger A100',
+  ].map(normalizeNameKey)
+);
+
+const YELLOW_CLAMPS_KEYS = new Set(
+  [
+    'Kupo 4in Super Viser Clamp End Jaw',
+    'Kupo Super Clamp',
+    'Kupo Grip Head',
+    // Variant in current catalog/DB
+    'Super Viser Clamp End Jaw 2"',
+    'Super Viser Clamp End Jaw 2',
+  ].map(normalizeNameKey)
+);
+
+const YELLOW_FROST_FRAMES_KEYS = new Set(
+  [
+    'Купо Butterfly Рама 8x8 (включая Silk 1.6, Grid Cloth 1/4, 1/8, Black & Silver)',
+    'Kupo Butterfly Рама 8x8 (включая Silk 1.6, Grid Cloth 1/4, 1/8, Black & Silver)',
+    'Фростовая рама 100x100 (216) (250)',
+    'Флаг Floppy Cutter 100x100',
+    'Фростовая рама 60x60 (250)',
+    'Флаг Floppy Cutter 60x60',
+    // Variants in current catalog/DB
+    "Рама 12'x12' Modular Frame Manfrotto H1200M",
+    "Avenger Двойное Полотно I920BDN 12х12' (360х360см) black",
+    "Avenger I920SDL Полотно для флага 12х12' (360х360см)",
+    "Grip Текстиль 6'x6' BB COTON Т 6-BB-C",
+  ].map(normalizeNameKey)
+);
+
+function deriveCategoryMeta(product) {
+  const rawCategory = normalizeKey(product?.category);
+  const nameKey = normalizeNameKey(product?.name);
+
+  // Strict mapping by DB category → 3 main categories.
+  if (rawCategory === 'освещение') {
+    return { mainCategory: MAIN_CATEGORY_LIGHT, subCategory: null, color: 'blue' };
+  }
+
+  if (rawCategory === 'мониторы и контроль') {
+    return { mainCategory: MAIN_CATEGORY_OPERATOR, subCategory: null, color: 'green' };
+  }
+
+  if (rawCategory === 'грип и крепёж' || rawCategory === 'модификаторы и текстиль') {
+    const mainCategory = MAIN_CATEGORY_GRIP;
+
+    // Textiles/modifiers in this project belong to yellow frost frames.
+    if (rawCategory === 'модификаторы и текстиль') {
+      return { mainCategory, subCategory: YELLOW_SUBCATEGORY_FROST_FRAMES, color: 'yellow' };
+    }
+
+    if (YELLOW_CLAMPS_KEYS.has(nameKey)) {
+      return { mainCategory, subCategory: YELLOW_SUBCATEGORY_CLAMPS, color: 'yellow' };
+    }
+
+    if (YELLOW_FROST_FRAMES_KEYS.has(nameKey)) {
+      return { mainCategory, subCategory: YELLOW_SUBCATEGORY_FROST_FRAMES, color: 'yellow' };
+    }
+
+    if (YELLOW_STANDS_KEYS.has(nameKey)) {
+      return { mainCategory, subCategory: YELLOW_SUBCATEGORY_STANDS, color: 'yellow' };
+    }
+
+    return { mainCategory, subCategory: YELLOW_SUBCATEGORY_STANDS, color: 'yellow' };
+  }
+
+  // Fallback
+  return { mainCategory: MAIN_CATEGORY_OPERATOR, subCategory: null, color: 'green' };
+}
+
 function uploadImageMiddleware(req, res, next) {
   const mw = IMAGE_STORAGE === 'db' ? uploadDb.single('image') : uploadFs.single('image');
   return mw(req, res, next);
@@ -314,7 +420,17 @@ app.get('/api/admin/products', requireAdmin, async (req, res) => {
       ORDER BY p.created_at DESC`
     );
 
-    res.json(result.rows);
+    const enriched = result.rows.map((row) => {
+      const meta = deriveCategoryMeta(row);
+      return {
+        ...row,
+        mainCategory: meta.mainCategory,
+        subCategory: meta.subCategory,
+        categoryColor: meta.color,
+      };
+    });
+
+    res.json(enriched);
   } catch (error) {
     console.error('Ошибка получения товаров (admin):', error);
     res.status(500).json({ error: 'Ошибка при получении товаров' });
@@ -765,7 +881,17 @@ app.get('/api/products', async (req, res) => {
       ORDER BY p.created_at DESC`
     );
 
-    res.json(result.rows);
+    const enriched = result.rows.map((row) => {
+      const meta = deriveCategoryMeta(row);
+      return {
+        ...row,
+        mainCategory: meta.mainCategory,
+        subCategory: meta.subCategory,
+        categoryColor: meta.color,
+      };
+    });
+
+    res.json(enriched);
   } catch (error) {
     console.error('Ошибка получения товаров:', error);
     res.status(503).json({

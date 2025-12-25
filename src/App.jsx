@@ -12,6 +12,7 @@ import { HomePage } from './pages/HomePage'
 import { CatalogPage } from './pages/CatalogPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { CartPage } from './pages/CartPage'
+import { MAIN_CATEGORIES, getEffectiveMainCategory } from './utils/categories'
 
 function App() {
   const navigate = useNavigate()
@@ -87,10 +88,18 @@ function App() {
   }, [products, productsLoading])
 
   const categoryTotals = useMemo(() => {
-    return catalogItems.reduce((acc, item) => {
-      acc[item.category] = (acc[item.category] || 0) + 1
+    const totals = MAIN_CATEGORIES.reduce((acc, category) => {
+      acc[category] = 0
       return acc
     }, {})
+
+    for (const item of catalogItems) {
+      const category = getEffectiveMainCategory(item)
+      if (!category) continue
+      totals[category] = (totals[category] || 0) + 1
+    }
+
+    return totals
   }, [catalogItems])
 
   const heroStats = useMemo(() => {
@@ -101,7 +110,11 @@ function App() {
     ]
   }, [categoryTotals, catalogItems.length])
 
-  const categoryChips = useMemo(() => Object.entries(categoryTotals).sort(([, a], [, b]) => b - a), [categoryTotals])
+  const categoryChips = useMemo(() => {
+    return MAIN_CATEGORIES
+      .map((category) => [category, categoryTotals?.[category] || 0])
+      .filter(([, count]) => count > 0)
+  }, [categoryTotals])
 
   const cartCount = cartItems.reduce((sum, entry) => sum + entry.count, 0)
 

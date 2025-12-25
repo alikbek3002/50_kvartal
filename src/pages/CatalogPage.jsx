@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react'
 import { getProductImage } from '../utils/imageLoader'
 import { formatBrand, formatBookedUntil } from '../utils/helpers'
+import { MAIN_CATEGORY_GRIP, YELLOW_SUBCATEGORIES, getEffectiveMainCategory, getEffectiveSubCategory, isYellowMainCategory } from '../utils/categories'
 
 export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, categoryChips, cartItems = [] }) => {
   const [selectedCategory, setSelectedCategory] = useState(null)
+  const [selectedSubCategory, setSelectedSubCategory] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
 
@@ -13,21 +15,37 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
     let result = items
 
     if (selectedCategory) {
-      result = result.filter(item => item.category === selectedCategory)
+      result = result.filter((item) => getEffectiveMainCategory(item) === selectedCategory)
+
+      if (selectedCategory === MAIN_CATEGORY_GRIP && selectedSubCategory) {
+        result = result.filter((item) => getEffectiveSubCategory(item) === selectedSubCategory)
+      }
     }
 
     if (searchQuery.trim()) {
       const query = toSearchString(searchQuery.trim())
       result = result.filter((item) => {
         const name = toSearchString(item?.name)
-        const category = toSearchString(item?.category)
+        const category = toSearchString(getEffectiveMainCategory(item) || item?.category)
+        const subCategory = toSearchString(getEffectiveSubCategory(item))
         const brand = toSearchString(item?.brand)
-        return name.includes(query) || category.includes(query) || brand.includes(query)
+        return name.includes(query) || category.includes(query) || subCategory.includes(query) || brand.includes(query)
       })
     }
 
     return result
-  }, [items, selectedCategory, searchQuery])
+  }, [items, selectedCategory, selectedSubCategory, searchQuery])
+
+  const availableYellowSubcategories = useMemo(() => {
+    if (!Array.isArray(items) || items.length === 0) return []
+    const present = new Set()
+    for (const item of items) {
+      if (!isYellowMainCategory(getEffectiveMainCategory(item))) continue
+      const sub = getEffectiveSubCategory(item)
+      if (sub) present.add(sub)
+    }
+    return YELLOW_SUBCATEGORIES.filter((s) => present.has(s))
+  }, [items])
 
   const suggestions = useMemo(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) return []
@@ -94,7 +112,10 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
             </span>
             <button
               className={`chip ${!selectedCategory ? 'chip--active' : ''}`}
-              onClick={() => setSelectedCategory(null)}
+              onClick={() => {
+                setSelectedCategory(null)
+                setSelectedSubCategory(null)
+              }}
             >
               Все
             </button>
@@ -102,12 +123,38 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
               <button
                 className={`chip ${selectedCategory === category ? 'chip--active' : ''}`}
                 key={category}
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => {
+                  setSelectedCategory(category)
+                  setSelectedSubCategory(null)
+                }}
               >
                 {category}
               </button>
             ))}
           </div>
+
+          {selectedCategory === MAIN_CATEGORY_GRIP && availableYellowSubcategories.length > 0 && (
+            <div className="catalog__chips">
+              <span className="catalog__chips-label">
+                Подкатегории:
+              </span>
+              <button
+                className={`chip ${!selectedSubCategory ? 'chip--active' : ''}`}
+                onClick={() => setSelectedSubCategory(null)}
+              >
+                Все
+              </button>
+              {availableYellowSubcategories.map((sub) => (
+                <button
+                  key={sub}
+                  className={`chip ${selectedSubCategory === sub ? 'chip--active' : ''}`}
+                  onClick={() => setSelectedSubCategory(sub)}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="catalog__grid">
             {filteredItems.map((item) => {
@@ -159,7 +206,10 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                 </div>
                 <div className="product__meta">
                   <span className="badge">{formatBrand(item.brand)}</span>
-                  <span className="badge badge--ghost">{item.category}</span>
+                  <span className="badge badge--ghost">{getEffectiveMainCategory(item) || item.category}</span>
+                  {isYellowMainCategory(getEffectiveMainCategory(item)) && getEffectiveSubCategory(item) && (
+                    <span className="badge badge--ghost">{getEffectiveSubCategory(item)}</span>
+                  )}
                   {!isOutOfStock && hasAvailabilityV2 && (
                     <span className="badge badge--ghost">Свободно: {Math.max(0, availableNow)} из {stock}</span>
                   )}
