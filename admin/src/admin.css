@@ -126,6 +126,15 @@
   color: var(--text-primary);
 }
 
+.form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text-primary);
+}
+
 .toggle-row {
   display: flex;
   align-items: center;

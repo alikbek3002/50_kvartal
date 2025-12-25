@@ -779,7 +779,12 @@ export default function App() {
 
                   <div className="form-group">
                     <label>Категория</label>
-                    <input value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))} />
+                    <select value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}>
+                      <option value="">— Без категории —</option>
+                      <option value="Операторское оборудование">Операторское оборудование</option>
+                      <option value="Свет">Свет</option>
+                      <option value="Грип и крепёж">Грип и крепёж</option>
+                    </select>
                   </div>
 
                   <div className="form-group">

@@ -85,6 +85,17 @@ export function deriveCategoryMeta(item) {
     return { mainCategory: '', subCategory: '' }
   }
 
+  // If category is already one of the 3 main categories (admin uses a static select), accept as-is.
+  if (rawCategory === toKey(MAIN_CATEGORY_OPERATOR)) {
+    return { mainCategory: MAIN_CATEGORY_OPERATOR, subCategory: '' }
+  }
+  if (rawCategory === toKey(MAIN_CATEGORY_LIGHT)) {
+    return { mainCategory: MAIN_CATEGORY_LIGHT, subCategory: '' }
+  }
+  if (rawCategory === toKey(MAIN_CATEGORY_GRIP)) {
+    // Continue with yellow subcategory strict mapping below.
+  }
+
   // Strict mapping by existing DB category → 3 main categories.
   if (rawCategory === 'освещение') {
     return { mainCategory: MAIN_CATEGORY_LIGHT, subCategory: '' }

@@ -160,6 +160,15 @@ function deriveCategoryMeta(product) {
     return { mainCategory: null, subCategory: null, color: null };
   }
 
+  // If category is already one of the 3 main categories (admin uses a static select), accept as-is.
+  if (rawCategory === normalizeKey(MAIN_CATEGORY_OPERATOR)) {
+    return { mainCategory: MAIN_CATEGORY_OPERATOR, subCategory: null, color: 'green' };
+  }
+  if (rawCategory === normalizeKey(MAIN_CATEGORY_LIGHT)) {
+    return { mainCategory: MAIN_CATEGORY_LIGHT, subCategory: null, color: 'blue' };
+  }
+  // For MAIN_CATEGORY_GRIP we still compute yellow subCategory below.
+
   // Strict mapping by DB category → 3 main categories.
   if (rawCategory === 'освещение') {
     return { mainCategory: MAIN_CATEGORY_LIGHT, subCategory: null, color: 'blue' };
