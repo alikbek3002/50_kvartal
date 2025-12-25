@@ -301,6 +301,7 @@ export default function App() {
   }
 
   const startEdit = (p) => {
+    const parsedPricePerDay = Number(p?.pricePerDay)
     const resolvedImageUrls = Array.isArray(p?.imageUrls)
       ? p.imageUrls.filter((u) => typeof u === 'string' && u.trim()).map((u) => u.trim())
       : typeof p?.imageUrl === 'string' && p.imageUrl.trim()
@@ -327,7 +328,8 @@ export default function App() {
       category: p.category || '',
       brand: p.brand || '',
       stock: Number.isFinite(p.stock) ? p.stock : 0,
-      pricePerDay: Number.isFinite(p.pricePerDay) ? p.pricePerDay : 100,
+      // Postgres NUMERIC часто прилетает строкой (например "250.00")
+      pricePerDay: Number.isFinite(parsedPricePerDay) ? parsedPricePerDay : 100,
       imageUrls: resolvedImageUrls,
       description: p.description || '',
       equipment: equipmentStr,
@@ -569,12 +571,13 @@ export default function App() {
     setError('')
 
     try {
+      const normalizedPricePerDay = form.pricePerDay === '' ? Number.NaN : Number(form.pricePerDay)
       const payload = {
         name: form.name.trim(),
         category: form.category.trim(),
         brand: form.brand.trim() || null,
         stock: Number(form.stock) || 0,
-        pricePerDay: Number(form.pricePerDay) || 100,
+        pricePerDay: Number.isFinite(normalizedPricePerDay) ? normalizedPricePerDay : 100,
         // Backward-compatible: older backend versions only support imageUrl
         imageUrl: Array.isArray(form.imageUrls) && form.imageUrls[0] ? form.imageUrls[0] : null,
         imageUrls: Array.isArray(form.imageUrls) ? form.imageUrls : [],
@@ -806,7 +809,13 @@ export default function App() {
                     <input
                       type="number"
                       value={form.pricePerDay}
-                      onChange={(e) => setForm((prev) => ({ ...prev, pricePerDay: Number(e.target.value) }))}
+                      onChange={(e) => {
+                        const next = e.target.value
+                        setForm((prev) => ({
+                          ...prev,
+                          pricePerDay: next === '' ? '' : Number(next),
+                        }))
+                      }}
                     />
                   </div>
 
