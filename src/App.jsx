@@ -13,6 +13,19 @@ import { CatalogPage } from './pages/CatalogPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { CartPage } from './pages/CartPage'
 import { MAIN_CATEGORIES, getEffectiveMainCategory } from './utils/categories'
+import inventoryFallback from './data/inventory.json'
+
+const FALLBACK_PRODUCTS = Array.isArray(inventoryFallback) ? inventoryFallback : []
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 9000) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
 
 function App() {
   const navigate = useNavigate()
@@ -31,7 +44,7 @@ function App() {
 
     async function loadProducts() {
       try {
-        const response = await fetch(`${API_URL}/api/products`)
+        const response = await fetchWithTimeout(`${API_URL}/api/products`)
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
         const contentType = response.headers.get('content-type') || ''
@@ -53,8 +66,15 @@ function App() {
       } catch (error) {
         console.error('Failed to load products from API:', error)
         if (isMounted) {
-          setProducts([])
-          setMaintenance(true)
+          // Important: some devices/networks may block the API domain.
+          // Keep the site usable by falling back to a bundled inventory.
+          if (FALLBACK_PRODUCTS.length > 0) {
+            setProducts(FALLBACK_PRODUCTS)
+            setMaintenance(false)
+          } else {
+            setProducts([])
+            setMaintenance(true)
+          }
         }
       } finally {
         if (isMounted) setProductsLoading(false)
