@@ -86,13 +86,17 @@ const uploadDb = multer({
   fileFilter: imageFileFilter,
 });
 
-const MAIN_CATEGORY_OPERATOR = 'Операторское оборудование';
-const MAIN_CATEGORY_LIGHT = 'Свет';
-const MAIN_CATEGORY_GRIP = 'Грип и крепёж';
+const CATEGORY_OPERATOR = 'Операторское оборудование';
+const CATEGORY_LIGHT = 'Свет';
+const CATEGORY_STANDS = 'Стенды (Систенты)';
+const CATEGORY_CLAMPS = 'Зажимы';
+const CATEGORY_FROST_FRAMES = 'Фрост рамы';
 
-const YELLOW_SUBCATEGORY_STANDS = 'Стенды (Систенты)';
-const YELLOW_SUBCATEGORY_CLAMPS = 'Зажимы';
-const YELLOW_SUBCATEGORY_FROST_FRAMES = 'Фрост рамы';
+const CATEGORY_KEYS = new Set(
+  [CATEGORY_OPERATOR, CATEGORY_LIGHT, CATEGORY_STANDS, CATEGORY_CLAMPS, CATEGORY_FROST_FRAMES].map((v) =>
+    String(v).trim().toLowerCase()
+  )
+);
 
 function normalizeText(value) {
   return String(value ?? '').trim();
@@ -160,45 +164,55 @@ function deriveCategoryMeta(product) {
     return { mainCategory: null, subCategory: null, color: null };
   }
 
-  // If category is already one of the 3 main categories (admin uses a static select), accept as-is.
-  if (rawCategory === normalizeKey(MAIN_CATEGORY_OPERATOR)) {
-    return { mainCategory: MAIN_CATEGORY_OPERATOR, subCategory: null, color: 'green' };
+  // If category is already one of the 5 categories, accept as-is.
+  if (CATEGORY_KEYS.has(rawCategory)) {
+    const normalized = rawCategory;
+    if (normalized === normalizeKey(CATEGORY_OPERATOR)) {
+      return { mainCategory: CATEGORY_OPERATOR, subCategory: null, color: 'green' };
+    }
+    if (normalized === normalizeKey(CATEGORY_LIGHT)) {
+      return { mainCategory: CATEGORY_LIGHT, subCategory: null, color: 'blue' };
+    }
+
+    if (normalized === normalizeKey(CATEGORY_STANDS)) {
+      return { mainCategory: CATEGORY_STANDS, subCategory: null, color: 'yellow' };
+    }
+    if (normalized === normalizeKey(CATEGORY_CLAMPS)) {
+      return { mainCategory: CATEGORY_CLAMPS, subCategory: null, color: 'yellow' };
+    }
+    if (normalized === normalizeKey(CATEGORY_FROST_FRAMES)) {
+      return { mainCategory: CATEGORY_FROST_FRAMES, subCategory: null, color: 'yellow' };
+    }
   }
-  if (rawCategory === normalizeKey(MAIN_CATEGORY_LIGHT)) {
-    return { mainCategory: MAIN_CATEGORY_LIGHT, subCategory: null, color: 'blue' };
-  }
-  // For MAIN_CATEGORY_GRIP we still compute yellow subCategory below.
 
   // Strict mapping by DB category → 3 main categories.
   if (rawCategory === 'освещение') {
-    return { mainCategory: MAIN_CATEGORY_LIGHT, subCategory: null, color: 'blue' };
+    return { mainCategory: CATEGORY_LIGHT, subCategory: null, color: 'blue' };
   }
 
   if (rawCategory === 'мониторы и контроль') {
-    return { mainCategory: MAIN_CATEGORY_OPERATOR, subCategory: null, color: 'green' };
+    return { mainCategory: CATEGORY_OPERATOR, subCategory: null, color: 'green' };
   }
 
   if (rawCategory === 'грип и крепёж' || rawCategory === 'модификаторы и текстиль') {
-    const mainCategory = MAIN_CATEGORY_GRIP;
-
     // Textiles/modifiers in this project belong to yellow frost frames.
     if (rawCategory === 'модификаторы и текстиль') {
-      return { mainCategory, subCategory: YELLOW_SUBCATEGORY_FROST_FRAMES, color: 'yellow' };
+      return { mainCategory: CATEGORY_FROST_FRAMES, subCategory: null, color: 'yellow' };
     }
 
     if (YELLOW_CLAMPS_KEYS.has(nameKey)) {
-      return { mainCategory, subCategory: YELLOW_SUBCATEGORY_CLAMPS, color: 'yellow' };
+      return { mainCategory: CATEGORY_CLAMPS, subCategory: null, color: 'yellow' };
     }
 
     if (YELLOW_FROST_FRAMES_KEYS.has(nameKey)) {
-      return { mainCategory, subCategory: YELLOW_SUBCATEGORY_FROST_FRAMES, color: 'yellow' };
+      return { mainCategory: CATEGORY_FROST_FRAMES, subCategory: null, color: 'yellow' };
     }
 
     if (YELLOW_STANDS_KEYS.has(nameKey)) {
-      return { mainCategory, subCategory: YELLOW_SUBCATEGORY_STANDS, color: 'yellow' };
+      return { mainCategory: CATEGORY_STANDS, subCategory: null, color: 'yellow' };
     }
 
-    return { mainCategory, subCategory: YELLOW_SUBCATEGORY_STANDS, color: 'yellow' };
+    return { mainCategory: CATEGORY_STANDS, subCategory: null, color: 'yellow' };
   }
 
   // Fallback

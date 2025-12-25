@@ -82,3 +82,22 @@ npm run dev
 ```
 
 Сервер запустится на http://localhost:3001
+
+## 🗂️ Массовое назначение категорий (5 категорий)
+
+Скрипт читает правила из `server/scripts/catalog-overrides.json` и обновляет `products.category` (а также опционально `stock` и `price_per_day`, если заполнить поля `stock`/`pricePerDay`).
+
+1) Задай `DATABASE_URL` от Railway Postgres
+2) Прогони dry-run:
+
+```bash
+cd server
+npm run catalog:dry
+```
+
+3) Применить изменения:
+
+```bash
+cd server
+npm run catalog:apply
+```

@@ -1,0 +1,239 @@
+[
+  {
+    "category": "Операторское оборудование",
+    "name": "Blackmagic Pocket Cinema Camera 6K Pro"
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "Клетка SmallRig"
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "V-Mount площадка SmallRig"
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "Суппорта 30 см"
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "Baseplate NiceyRig"
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "SSD Samsung T7 1TB"
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "Кабель D-Tap to 2-pin"
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "Штатив E-Image EG15A2 (100mm)",
+    "aliases": ["Штатив E- Image EG15A", "Штатив E-Image EG15A2", "E-Image EG15A2 (100mm)"]
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "Радиофокус Tilta Nucleus-M",
+    "aliases": ["Tilta Nucleus-M"]
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "Видеосендер Hollyland Mars 400s pro",
+    "aliases": ["Hollyland Mars 400s pro", "Hollyland Mars 400S Pro"]
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "Фокус монитор Atomos Shinobi 7 + cage",
+    "aliases": ["Atomos Shinobi 7", "Atomos Shinobi 7 + cage"]
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "Режиссерский монитор-рекордер Atomos Neon 17",
+    "aliases": ["Atomos NEON 17\" 4 K HDR монитор / рекордер", "Atomos Neon 17"]
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "DZOFilm Pictor 14-30mm T2.8",
+    "aliases": ["DZOFilm Pictor 14-30mm", "Pictor 14-30mm"]
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "DZOFilm Pictor 50-125mm T2.8",
+    "aliases": ["DZOFilm Pictor 50-125mm", "Pictor 50-125mm"]
+  },
+  {
+    "category": "Операторское оборудование",
+    "name": "Беспроводной интерком Hollyland Solidcom",
+    "aliases": ["Hollyland Solidcom"]
+  },
+
+  {
+    "category": "Стенды (Систенты)",
+    "name": "Kupo Master High Cine Stand 543M (A100)",
+    "aliases": ["Avenger A100"]
+  },
+  {
+    "category": "Стенды (Систенты)",
+    "name": "Kupo C-Stand 40"
+  },
+  {
+    "category": "Стенды (Систенты)",
+    "name": "Kupo C-Stand 20",
+    "aliases": ["Kupo CT-20M 20 inc h C-Stand (KUP-CT-20M)"]
+  },
+  {
+    "category": "Стенды (Систенты)",
+    "name": "Kupo Autopole 1 - 1.70m",
+    "aliases": ["Распорка автополе Kupo KP-S1017PD Kupole", "Kupo KP-S1017PD"]
+  },
+  {
+    "category": "Стенды (Систенты)",
+    "name": "Kupo Autopole 2.10m"
+  },
+  {
+    "category": "Стенды (Систенты)",
+    "name": "Kupo KCP-636B Big Boom (журавль/выносная штанга)",
+    "aliases": ["Kupo KCP-636B Big Boom"]
+  },
+
+  {
+    "category": "Зажимы",
+    "name": "Kupo 4in Super Viser Clamp End Jaw",
+    "aliases": ["Super Viser Clamp End Jaw 2\"", "Super Viser Clamp End Jaw 2"]
+  },
+  {
+    "category": "Зажимы",
+    "name": "Kupo Super Clamp"
+  },
+  {
+    "category": "Зажимы",
+    "name": "Kupo Grip Head"
+  },
+
+  {
+    "category": "Фрост рамы",
+    "name": "Слайдер Dana Dolly (1m, 2m, 3.5m) + Apple Box 6шт",
+    "aliases": ["Dana Dolly", "Apple Box"]
+  },
+  {
+    "category": "Фрост рамы",
+    "name": "Kupo Butterfly Рама 8x8 (включая Silk 1.6, Grid Cloth 1/4, 1/8, Black & Silver)"
+  },
+  {
+    "category": "Фрост рамы",
+    "name": "Фростовая рама 100x100 (216) (250)"
+  },
+  {
+    "category": "Фрост рамы",
+    "name": "Флаг Floppy Cutter 100x100"
+  },
+  {
+    "category": "Фрост рамы",
+    "name": "Фростовая рама 60x60 (250)"
+  },
+  {
+    "category": "Фрост рамы",
+    "name": "Флаг Floppy Cutter 60x60"
+  },
+  {
+    "category": "Фрост рамы",
+    "name": "Дым машина",
+    "aliases": ["Smoke machine"]
+  },
+  {
+    "category": "Фрост рамы",
+    "name": "Катушка (30м)",
+    "aliases": ["Катушка 30м", "Катушка 30 м"]
+  },
+
+  {
+    "category": "Свет",
+    "name": "Портативный свет Aputure MC RGB"
+  },
+  {
+    "category": "Свет",
+    "name": "Nanlite Forza 500 II",
+    "aliases": ["Nanlite Forza 500 II"]
+  },
+  {
+    "category": "Свет",
+    "name": "Френеля Aputure F10 Fresnel",
+    "aliases": ["Френеля Aputure F10 Fresnel Flashpoint", "Aputure F10 Fresnel"]
+  },
+  {
+    "category": "Свет",
+    "name": "Flashpoint"
+  },
+  {
+    "category": "Свет",
+    "name": "Aputure NOVA P300C Softbox",
+    "aliases": ["Aputure NOVA P300C Softbox", "Aputure Light Dome SE"]
+  },
+  {
+    "category": "Свет",
+    "name": "Aputure Nova P300C Kit",
+    "aliases": ["Aputure Nova P300C Kit", "Aputure Nova P300C RGBWW LED (70% brighter than Skypanel S30-c)"]
+  },
+  {
+    "category": "Свет",
+    "name": "Aputure STORM 1200x Bi-Color",
+    "aliases": ["Осветитель Aputure Storm 1200x Линза", "Aputure Storm 1200x"]
+  },
+  {
+    "category": "Свет",
+    "name": "Aputure Light Storm LS 600c Pro LED lamp - V-mount"
+  },
+  {
+    "category": "Свет",
+    "name": "Amaran F22c RGB 2x2 Light Mat",
+    "aliases": ["Aputure amaran F22c 2 x 2' RGB LED Flexible Light Mat (V-Mount),", "amaran F22c"]
+  },
+  {
+    "category": "Свет",
+    "name": "Aputure Accent B7c LED RGB",
+    "aliases": ["Набор ламп Aputure Accent B7C 8-Light Kit"]
+  },
+  {
+    "category": "Свет",
+    "name": "Aputure Light Dome 150 Soybox",
+    "aliases": ["Aputure Light Dome 150"]
+  },
+  {
+    "category": "Свет",
+    "name": "Aputure Light Dome III (90)",
+    "aliases": ["Aputure Light Dome III"]
+  },
+  {
+    "category": "Свет",
+    "name": "Aputure Lantern 90 Chinaball",
+    "aliases": ["Aputure Lantern 90"]
+  },
+  {
+    "category": "Свет",
+    "name": "Fresnel Nanlite FL-20G",
+    "aliases": ["Nanlite FL-20G"]
+  },
+  {
+    "category": "Свет",
+    "name": "Aputure Light Dome SE"
+  },
+  {
+    "category": "Свет",
+    "name": "amaran 30x pt4c",
+    "aliases": ["amaran 30x", "amaran pt4c 30x"]
+  },
+  {
+    "category": "Свет",
+    "name": "amaran 15x pt4c",
+    "aliases": ["amaran 15x", "amaran pt4c 15x"]
+  },
+  {
+    "category": "Свет",
+    "name": "Barndoors and Grid for amaran 30x pt4c"
+  },
+  {
+    "category": "Свет",
+    "name": "Barndoors and Grid for amaran 15x pt4c"
+  }
+]

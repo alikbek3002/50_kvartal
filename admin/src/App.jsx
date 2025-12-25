@@ -785,8 +785,10 @@ export default function App() {
                     <select value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}>
                       <option value="">— Без категории —</option>
                       <option value="Операторское оборудование">Операторское оборудование</option>
+                      <option value="Стенды (Систенты)">Стенды (Систенты)</option>
+                      <option value="Зажимы">Зажимы</option>
+                      <option value="Фрост рамы">Фрост рамы</option>
                       <option value="Свет">Свет</option>
-                      <option value="Грип и крепёж">Грип и крепёж</option>
                     </select>
                   </div>
 

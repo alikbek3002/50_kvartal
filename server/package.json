@@ -9,7 +9,9 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "migrate:images": "node scripts/migrate-images-to-db.js"
+    "migrate:images": "node scripts/migrate-images-to-db.js",
+    "catalog:dry": "node scripts/apply-catalog-overrides.js --dry-run",
+    "catalog:apply": "node scripts/apply-catalog-overrides.js --apply"
   },
   "dependencies": {
     "express": "^4.18.2",

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getProductImages } from '../utils/imageLoader'
 import { formatBrand, formatBookedUntil } from '../utils/helpers'
-import { getEffectiveMainCategory, getEffectiveSubCategory, isYellowMainCategory } from '../utils/categories'
+import { getEffectiveMainCategory } from '../utils/categories'
 import { useSwipeDownToClose } from '../utils/useSwipeDownToClose'
 
 export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
@@ -162,13 +162,9 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
           </div>
         )}
         <div className="modal-details">
-  import { getEffectiveMainCategory, getEffectiveSubCategory, isYellowMainCategory } from '../utils/categories'
           <div className="modal-tags">
             <span className="badge">{formatBrand(item.brand)}</span>
               <span className="badge badge--ghost">{getEffectiveMainCategory(item) || item.category}</span>
-              {isYellowMainCategory(getEffectiveMainCategory(item)) && getEffectiveSubCategory(item) && (
-                <span className="badge badge--ghost">{getEffectiveSubCategory(item)}</span>
-              )}
           </div>
           <h3>{item.name}</h3>
           <div className="modal-status">
@@ -224,12 +220,6 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
                       <dt>Категория</dt>
                       <dd>{getEffectiveMainCategory(item) || item.category}</dd>
                     </div>
-                    {isYellowMainCategory(getEffectiveMainCategory(item)) && getEffectiveSubCategory(item) && (
-                      <div>
-                        <dt>Подкатегория</dt>
-                        <dd>{getEffectiveSubCategory(item)}</dd>
-                      </div>
-                    )}
                     <div>
                       <dt>Бренд</dt>
                       <dd>{formatBrand(item.brand)}</dd>
