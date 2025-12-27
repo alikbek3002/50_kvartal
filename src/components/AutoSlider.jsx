@@ -101,9 +101,6 @@ export const AutoSlider = ({ items, onSelectItem, onAddToCart, onQuickRent, cart
               <div className="product__meta">
                 <span className="badge">{formatBrand(item.brand)}</span>
                 <span className="badge badge--ghost">{getEffectiveMainCategory(item) || item.category}</span>
-                {!isOutOfStock && hasAvailabilityV2 && (
-                  <span className="badge badge--ghost">Свободно: {Math.max(0, availableNow)} из {stock}</span>
-                )}
               </div>
               <h3>{item.name}</h3>
               <p className="product__price">{item.pricePerDay || 100} сом/сутки</p>
