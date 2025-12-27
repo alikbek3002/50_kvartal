@@ -41,11 +41,18 @@ function App() {
 
   useEffect(() => {
     let isMounted = true
+    let loadingController = new AbortController()
 
     async function loadProducts() {
       try {
-        const response = await fetchWithTimeout(`${API_URL}/api/products`)
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const response = await fetchWithTimeout(
+          `${API_URL}/api/products`,
+          { signal: loadingController.signal }
+        )
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
 
         const contentType = response.headers.get('content-type') || ''
         // On hosting, a common misconfig is VITE_API_URL pointing to the frontend.
@@ -60,24 +67,27 @@ function App() {
         }
 
         const data = await response.json()
-        if (!isMounted) return
+        if (!isMounted || loadingController.signal.aborted) return
+        
         setProducts(Array.isArray(data) ? data : [])
         setMaintenance(false)
       } catch (error) {
+        if (loadingController.signal.aborted || !isMounted) return
+        
         console.error('Failed to load products from API:', error)
-        if (isMounted) {
-          // Important: some devices/networks may block the API domain.
-          // Keep the site usable by falling back to a bundled inventory.
-          if (FALLBACK_PRODUCTS.length > 0) {
-            setProducts(FALLBACK_PRODUCTS)
-            setMaintenance(false)
-          } else {
-            setProducts([])
-            setMaintenance(true)
-          }
+        // Important: some devices/networks may block the API domain.
+        // Keep the site usable by falling back to a bundled inventory.
+        if (FALLBACK_PRODUCTS.length > 0) {
+          setProducts(FALLBACK_PRODUCTS)
+          setMaintenance(false)
+        } else {
+          setProducts([])
+          setMaintenance(true)
         }
       } finally {
-        if (isMounted) setProductsLoading(false)
+        if (isMounted && !loadingController.signal.aborted) {
+          setProductsLoading(false)
+        }
       }
     }
 
@@ -97,6 +107,7 @@ function App() {
     document.addEventListener('visibilitychange', handleVisibility)
     return () => {
       isMounted = false
+      loadingController.abort()
       window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
@@ -139,7 +150,26 @@ function App() {
 
   const addToCart = (item, rentalPeriod, count = 1) => {
     const resolvedCount = Number.isFinite(Number(count)) ? Math.max(1, Math.floor(Number(count))) : 1
+    
     setCartItems((prev) => {
+      // Проверяем, есть ли уже такой товар в корзине
+      const existingIndex = prev.findIndex(entry => 
+        entry.item.id === item.id || 
+        (entry.item.name === item.name && !entry.item.id && !item.id)
+      )
+      
+      if (existingIndex >= 0) {
+        // Обновляем существующую позицию
+        const updated = [...prev]
+        updated[existingIndex] = { 
+          ...updated[existingIndex], 
+          count: updated[existingIndex].count + resolvedCount,
+          rentalPeriod: rentalPeriod || updated[existingIndex].rentalPeriod
+        }
+        return updated
+      }
+      
+      // Добавляем новую позицию
       return [...prev, { item, count: resolvedCount, rentalPeriod }]
     })
   }

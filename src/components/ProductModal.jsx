@@ -64,20 +64,34 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
   }, [isViewerOpen])
 
   if (!item) return null
-  const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
-  const hasAvailabilityV2 =
-    item &&
-    (Object.prototype.hasOwnProperty.call(item, 'availableNow') ||
-      Object.prototype.hasOwnProperty.call(item, 'busyUnitsNow') ||
-      Object.prototype.hasOwnProperty.call(item, 'nextAvailableAt'))
-  const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
-  const busyUnitsNow = Number.isFinite(Number(item?.busyUnitsNow)) ? Number(item.busyUnitsNow) : 0
-  const nextAvailableAt = item?.nextAvailableAt
-  const bookedUntilLegacy = item?.bookedUntil
-  const isOutOfStock = stock <= 0
-  const isBookedNow = hasAvailabilityV2
-    ? !isOutOfStock && busyUnitsNow > 0
-    : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
+  
+  const itemData = useMemo(() => {
+    const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
+    const hasAvailabilityV2 =
+      item &&
+      (Object.prototype.hasOwnProperty.call(item, 'availableNow') ||
+        Object.prototype.hasOwnProperty.call(item, 'busyUnitsNow') ||
+        Object.prototype.hasOwnProperty.call(item, 'nextAvailableAt'))
+    const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
+    const busyUnitsNow = Number.isFinite(Number(item?.busyUnitsNow)) ? Number(item.busyUnitsNow) : 0
+    const nextAvailableAt = item?.nextAvailableAt
+    const bookedUntilLegacy = item?.bookedUntil
+    const isOutOfStock = stock <= 0
+    const isBookedNow = hasAvailabilityV2
+      ? !isOutOfStock && busyUnitsNow > 0
+      : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
+    
+    return {
+      stock,
+      hasAvailabilityV2,
+      availableNow,
+      busyUnitsNow,
+      nextAvailableAt,
+      bookedUntilLegacy,
+      isOutOfStock,
+      isBookedNow
+    }
+  }, [item])
 
   const currentImage = images[Math.min(imageIndex, Math.max(0, images.length - 1))]
 
@@ -169,17 +183,17 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
           <h3>{item.name}</h3>
           <div className="modal-status">
             <span className="modal-stock-note">
-              {isOutOfStock
+              {itemData.isOutOfStock
                 ? 'Нет в наличии'
-                : hasAvailabilityV2
-                  ? isBookedNow
-                    ? nextAvailableAt
-                      ? `Бронь до ${formatBookedUntil(nextAvailableAt)}`
+                : itemData.hasAvailabilityV2
+                  ? itemData.isBookedNow
+                    ? itemData.nextAvailableAt
+                      ? `Бронь до ${formatBookedUntil(itemData.nextAvailableAt)}`
                       : 'Забронировано'
-                    : `Доступно сейчас: ${Math.max(0, availableNow)} из ${stock}`
-                  : isBookedNow
-                    ? bookedUntilLegacy
-                      ? `Забронировано до ${formatBookedUntil(bookedUntilLegacy)}`
+                    : 'Доступно'
+                  : itemData.isBookedNow
+                    ? itemData.bookedUntilLegacy
+                      ? `Забронировано до ${formatBookedUntil(itemData.bookedUntilLegacy)}`
                       : 'Забронировано'
                     : 'Доступно'}
             </span>
@@ -293,7 +307,7 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
               className="button primary modal-cta"
               type="button"
               onClick={() => onQuickRent(item)}
-              disabled={isOutOfStock || (!hasAvailabilityV2 && isBookedNow)}
+              disabled={itemData.isOutOfStock || (!itemData.hasAvailabilityV2 && itemData.isBookedNow)}
             >
               Быстрая аренда
             </button>
@@ -301,7 +315,7 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
               className="button ghost modal-cta"
               type="button"
               onClick={() => onAddToCart(item)}
-              disabled={isOutOfStock || (!hasAvailabilityV2 && isBookedNow)}
+              disabled={itemData.isOutOfStock || (!itemData.hasAvailabilityV2 && itemData.isBookedNow)}
             >
               Добавить в корзину
             </button>

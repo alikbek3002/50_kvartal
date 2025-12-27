@@ -605,7 +605,14 @@ export default function App() {
     }
   }
 
-  if (!API_URL) {
+  const processedProducts = useMemo(() => {
+    return products.map(p => ({
+      ...p,
+      imageUrl: getProductImage(p),
+      busyUnitsCount: Number(p.busyUnitsNow ?? 0),
+      isBooked: Number(p.busyUnitsNow ?? 0) > 0
+    }))
+  }, [products])
     return (
       <div className="page">
         <header className="topbar">

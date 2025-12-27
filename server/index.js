@@ -861,6 +861,7 @@ app.get('/api/products', async (req, res) => {
         message: 'Ведутся технические работы',
       });
     }
+    
     const result = await pool.query(
       `SELECT
         p.id,
@@ -923,8 +924,9 @@ app.get('/api/products', async (req, res) => {
   } catch (error) {
     console.error('Ошибка получения товаров:', error);
     res.status(503).json({
-      error: 'maintenance',
+      error: 'maintenance', 
       message: 'Ведутся технические работы',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });

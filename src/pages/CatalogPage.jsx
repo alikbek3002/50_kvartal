@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { getProductImage } from '../utils/imageLoader'
 import { formatBrand, formatBookedUntil } from '../utils/helpers'
 import { getEffectiveMainCategory } from '../utils/categories'
@@ -6,7 +6,34 @@ import { getEffectiveMainCategory } from '../utils/categories'
 export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, categoryChips, cartItems = [] }) => {
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const searchTimeoutRef = useRef(null)
+  const suggestionsTimeoutRef = useRef(null)
+
+  // Debounce search query
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 300)
+    
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [searchQuery])
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+      if (suggestionsTimeoutRef.current) clearTimeout(suggestionsTimeoutRef.current)
+    }
+  }, [])
 
   const toSearchString = (value) => String(value ?? '').toLowerCase()
 
@@ -17,8 +44,8 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
       result = result.filter((item) => getEffectiveMainCategory(item) === selectedCategory)
     }
 
-    if (searchQuery.trim()) {
-      const query = toSearchString(searchQuery.trim())
+    if (debouncedSearchQuery.trim()) {
+      const query = toSearchString(debouncedSearchQuery.trim())
       result = result.filter((item) => {
         const name = toSearchString(item?.name)
         const category = toSearchString(getEffectiveMainCategory(item) || item?.category)
@@ -28,7 +55,7 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
     }
 
     return result
-  }, [items, selectedCategory, searchQuery])
+  }, [items, selectedCategory, debouncedSearchQuery])
 
   const suggestions = useMemo(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) return []
@@ -39,7 +66,7 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
       .slice(0, 5)
     
     return matches
-  }, [items, searchQuery])
+  }, [items, searchQuery, toSearchString])
 
   return (
     <main>
@@ -62,7 +89,12 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                   setShowSuggestions(true)
                 }}
                 onFocus={() => setShowSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                onBlur={() => {
+                  if (suggestionsTimeoutRef.current) {
+                    clearTimeout(suggestionsTimeoutRef.current)
+                  }
+                  suggestionsTimeoutRef.current = setTimeout(() => setShowSuggestions(false), 200)
+                }}
                 className="catalog__search-input"
               />
               {showSuggestions && suggestions.length > 0 && (
@@ -116,25 +148,42 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
 
           <div className="catalog__grid">
             {filteredItems.map((item) => {
-              const isInCart = cartItems.some(cartItem => cartItem.item.name === item.name)
-              const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
-              const hasAvailabilityV2 =
-                item &&
-                (Object.prototype.hasOwnProperty.call(item, 'availableNow') ||
-                  Object.prototype.hasOwnProperty.call(item, 'busyUnitsNow') ||
-                  Object.prototype.hasOwnProperty.call(item, 'nextAvailableAt'))
-              const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
-              const busyUnitsNow = Number.isFinite(Number(item?.busyUnitsNow)) ? Number(item.busyUnitsNow) : 0
-              const nextAvailableAt = item?.nextAvailableAt
-              const bookedUntilLegacy = item?.bookedUntil
-              const isOutOfStock = stock <= 0
-              const isBookedNow = hasAvailabilityV2
-                ? !isOutOfStock && busyUnitsNow > 0
-                : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
+              const isInCart = cartItems.some(cartItem => 
+                cartItem.item.id === item.id || 
+                (cartItem.item.name === item.name && !cartItem.item.id && !item.id)
+              )
+              
+              const itemData = useMemo(() => {
+                const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
+                const hasAvailabilityV2 =
+                  item &&
+                  (Object.prototype.hasOwnProperty.call(item, 'availableNow') ||
+                    Object.prototype.hasOwnProperty.call(item, 'busyUnitsNow') ||
+                    Object.prototype.hasOwnProperty.call(item, 'nextAvailableAt'))
+                const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
+                const busyUnitsNow = Number.isFinite(Number(item?.busyUnitsNow)) ? Number(item.busyUnitsNow) : 0
+                const nextAvailableAt = item?.nextAvailableAt
+                const bookedUntilLegacy = item?.bookedUntil
+                const isOutOfStock = stock <= 0
+                const isBookedNow = hasAvailabilityV2
+                  ? !isOutOfStock && busyUnitsNow > 0
+                  : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
+                
+                return {
+                  stock,
+                  hasAvailabilityV2,
+                  availableNow,
+                  busyUnitsNow,
+                  nextAvailableAt,
+                  bookedUntilLegacy,
+                  isOutOfStock,
+                  isBookedNow
+                }
+              }, [item])
               return (
               <article
                 key={item.id ?? item.name}
-                className={`product ${isInCart ? 'product--in-cart' : ''} ${isBookedNow ? 'product--booked' : ''}`}
+                className={`product ${isInCart ? 'product--in-cart' : ''} ${itemData.isBookedNow ? 'product--booked' : ''}`}
                 onClick={() => onSelectItem(item)}
                 role="button"
                 tabIndex={0}
@@ -148,16 +197,16 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                 <div className="product__thumb">
                   <img src={getProductImage(item)} alt={item.name} loading="lazy" />
                   {isInCart && <div className="product__in-cart-badge">В корзине</div>}
-                  {(isOutOfStock || isBookedNow) && (
+                  {(itemData.isOutOfStock || itemData.isBookedNow) && (
                     <div className="product__booked-badge">
-                      {isOutOfStock
+                      {itemData.isOutOfStock
                         ? 'Нет в наличии'
-                        : hasAvailabilityV2
-                          ? nextAvailableAt
-                            ? `Бронь до ${formatBookedUntil(nextAvailableAt)}`
+                        : itemData.hasAvailabilityV2
+                          ? itemData.nextAvailableAt
+                            ? `Бронь до ${formatBookedUntil(itemData.nextAvailableAt)}`
                             : 'Забронировано'
-                          : bookedUntilLegacy
-                            ? `Забронировано до ${formatBookedUntil(bookedUntilLegacy)}`
+                          : itemData.bookedUntilLegacy
+                            ? `Забронировано до ${formatBookedUntil(itemData.bookedUntilLegacy)}`
                             : 'Забронировано'}
                     </div>
                   )}
@@ -165,9 +214,6 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                 <div className="product__meta">
                   <span className="badge">{formatBrand(item.brand)}</span>
                   <span className="badge badge--ghost">{getEffectiveMainCategory(item) || item.category}</span>
-                  {!isOutOfStock && hasAvailabilityV2 && (
-                    <span className="badge badge--ghost">Свободно: {Math.max(0, availableNow)} из {stock}</span>
-                  )}
                 </div>
                 <h3>{item.name}</h3>
                 <p className="product__price">{item.pricePerDay || 100} сом/сутки</p>
@@ -175,10 +221,10 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                   <button
                     className="button primary"
                     type="button"
-                    disabled={isOutOfStock || (!hasAvailabilityV2 && isBookedNow)}
+                    disabled={itemData.isOutOfStock || (!itemData.hasAvailabilityV2 && itemData.isBookedNow)}
                     onClick={(event) => {
                       event.stopPropagation()
-                      if (isOutOfStock || (!hasAvailabilityV2 && isBookedNow)) return
+                      if (itemData.isOutOfStock || (!itemData.hasAvailabilityV2 && itemData.isBookedNow)) return
                       onQuickRent(item)
                     }}
                   >
@@ -187,10 +233,10 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                   <button
                     className="button ghost"
                     type="button"
-                    disabled={isOutOfStock || (!hasAvailabilityV2 && isBookedNow)}
+                    disabled={itemData.isOutOfStock || (!itemData.hasAvailabilityV2 && itemData.isBookedNow)}
                     onClick={(event) => {
                       event.stopPropagation()
-                      if (isOutOfStock || (!hasAvailabilityV2 && isBookedNow)) return
+                      if (itemData.isOutOfStock || (!itemData.hasAvailabilityV2 && itemData.isBookedNow)) return
                       onAddToCart(item)
                     }}
                   >
