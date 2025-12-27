@@ -63,8 +63,6 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [isViewerOpen])
 
-  if (!item) return null
-  
   const itemData = useMemo(() => {
     const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
     const hasAvailabilityV2 =
@@ -80,7 +78,7 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
     const isBookedNow = hasAvailabilityV2
       ? !isOutOfStock && busyUnitsNow > 0
       : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
-    
+
     return {
       stock,
       hasAvailabilityV2,
@@ -89,9 +87,11 @@ export const ProductModal = ({ item, onClose, onAddToCart, onQuickRent }) => {
       nextAvailableAt,
       bookedUntilLegacy,
       isOutOfStock,
-      isBookedNow
+      isBookedNow,
     }
   }, [item])
+
+  if (!item) return null
 
   const currentImage = images[Math.min(imageIndex, Math.max(0, images.length - 1))]
 

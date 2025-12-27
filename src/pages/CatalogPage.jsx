@@ -3,6 +3,36 @@ import { getProductImage } from '../utils/imageLoader'
 import { formatBrand, formatBookedUntil } from '../utils/helpers'
 import { getEffectiveMainCategory } from '../utils/categories'
 
+const toSearchString = (value) => String(value ?? '').toLowerCase()
+
+function getItemAvailabilityData(item) {
+  const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
+  const hasAvailabilityV2 =
+    item &&
+    (Object.prototype.hasOwnProperty.call(item, 'availableNow') ||
+      Object.prototype.hasOwnProperty.call(item, 'busyUnitsNow') ||
+      Object.prototype.hasOwnProperty.call(item, 'nextAvailableAt'))
+  const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
+  const busyUnitsNow = Number.isFinite(Number(item?.busyUnitsNow)) ? Number(item.busyUnitsNow) : 0
+  const nextAvailableAt = item?.nextAvailableAt
+  const bookedUntilLegacy = item?.bookedUntil
+  const isOutOfStock = stock <= 0
+  const isBookedNow = hasAvailabilityV2
+    ? !isOutOfStock && busyUnitsNow > 0
+    : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
+
+  return {
+    stock,
+    hasAvailabilityV2,
+    availableNow,
+    busyUnitsNow,
+    nextAvailableAt,
+    bookedUntilLegacy,
+    isOutOfStock,
+    isBookedNow,
+  }
+}
+
 export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, categoryChips, cartItems = [] }) => {
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -35,8 +65,6 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
     }
   }, [])
 
-  const toSearchString = (value) => String(value ?? '').toLowerCase()
-
   const filteredItems = useMemo(() => {
     let result = items
 
@@ -66,7 +94,7 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
       .slice(0, 5)
     
     return matches
-  }, [items, searchQuery, toSearchString])
+  }, [items, searchQuery])
 
   return (
     <main>
@@ -152,34 +180,8 @@ export const CatalogPage = ({ items, onSelectItem, onAddToCart, onQuickRent, cat
                 cartItem.item.id === item.id || 
                 (cartItem.item.name === item.name && !cartItem.item.id && !item.id)
               )
-              
-              const itemData = useMemo(() => {
-                const stock = Number.isFinite(Number(item?.stock)) ? Number(item.stock) : 0
-                const hasAvailabilityV2 =
-                  item &&
-                  (Object.prototype.hasOwnProperty.call(item, 'availableNow') ||
-                    Object.prototype.hasOwnProperty.call(item, 'busyUnitsNow') ||
-                    Object.prototype.hasOwnProperty.call(item, 'nextAvailableAt'))
-                const availableNow = Number.isFinite(Number(item?.availableNow)) ? Number(item.availableNow) : stock
-                const busyUnitsNow = Number.isFinite(Number(item?.busyUnitsNow)) ? Number(item.busyUnitsNow) : 0
-                const nextAvailableAt = item?.nextAvailableAt
-                const bookedUntilLegacy = item?.bookedUntil
-                const isOutOfStock = stock <= 0
-                const isBookedNow = hasAvailabilityV2
-                  ? !isOutOfStock && busyUnitsNow > 0
-                  : !isOutOfStock && bookedUntilLegacy && new Date(bookedUntilLegacy).getTime() > Date.now()
-                
-                return {
-                  stock,
-                  hasAvailabilityV2,
-                  availableNow,
-                  busyUnitsNow,
-                  nextAvailableAt,
-                  bookedUntilLegacy,
-                  isOutOfStock,
-                  isBookedNow
-                }
-              }, [item])
+
+              const itemData = getItemAvailabilityData(item)
               return (
               <article
                 key={item.id ?? item.name}
