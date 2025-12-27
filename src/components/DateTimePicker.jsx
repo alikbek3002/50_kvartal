@@ -402,28 +402,6 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="qty">Количество</label>
-              <input
-                type="number"
-                id="qty"
-                value={quantity}
-                min={1}
-                max={Math.max(1, maxQuantity || 1)}
-                onChange={(e) => setQuantity(e.target.value)}
-                required
-                disabled={maxQuantity <= 0}
-              />
-              {availability.error && (
-                <span className="form-error">{availability.error}</span>
-              )}
-              {!availability.error && maxQuantity <= 0 && (
-                <span className="form-error">На выбранный период нет свободных единиц</span>
-              )}
-            </div>
-          </div>
-
           {rentalDays > 0 && (
             <div className="datetime-picker__summary">
               <p>Период аренды: {rentalDays} дн.</p>
