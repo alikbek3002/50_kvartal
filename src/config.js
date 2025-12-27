@@ -16,3 +16,7 @@ function normalizeApiUrl(raw) {
 
 // Set in hosting as VITE_API_URL=https://<your-backend>.up.railway.app
 export const API_URL = normalizeApiUrl(import.meta.env.VITE_API_URL)
+
+// Контактный номер (единый источник правды для витрины)
+export const CONTACT_PHONE_DISPLAY = '+996 701 310 303'
+export const CONTACT_PHONE_TEL = 'tel:+996701310303'

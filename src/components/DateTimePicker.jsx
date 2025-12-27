@@ -404,7 +404,7 @@ export const DateTimePicker = ({ isOpen, onClose, onSubmit, item, mode, existing
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="qty">Количество (свободно: {availability.loading ? '...' : (maxQuantity > 0 ? maxQuantity : '—')}{Number.isFinite(Number(availability.total)) && availability.total > 0 ? ` из ${availability.total}` : ''})</label>
+              <label htmlFor="qty">Количество</label>
               <input
                 type="number"
                 id="qty"
