@@ -613,6 +613,8 @@ export default function App() {
       isBooked: Number(p.busyUnitsNow ?? 0) > 0
     }))
   }, [products])
+
+  if (!API_URL) {
     return (
       <div className="page">
         <header className="topbar">
